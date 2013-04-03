@@ -1,0 +1,9 @@
+*.ko
+*.ko.*
+*.mod.c
+*.o.cmd
+.tmp_versions
+Module.symvers
+modules.order
+*.o
+page_hash_user
