@@ -9,20 +9,43 @@
 
 #include "page_hash.h"
 
-static struct file_operations ph_fops = {
-};
+/* Proc dir and proc entry to be added */
+static struct proc_dir_entry *proc_dir, *proc_entry;
 
-int init_module() {
-	int ret;
+static int __init cs598_init_module()
+{
+	int ret = 0;
 
-	ret = register_chrdev(DEV_MAJOR_NUM, DEV_NAME, &ph_fops);
-	if (ret < 0)
-		printk(KERN_ERR "register_chrdev failed: %d\n", ret);
+	/* Create a proc directory entry cs598 */
+	proc_dir = proc_mkdir("cs598",NULL);
+	if ( proc_dir == NULL )
+		goto bad;
 
-	return EXIT_SUCCESS;
+	/* Create an entry hash under proc dir cs598 */
+	proc_entry = create_proc_entry( "hash", 0666, proc_dir );
+	if ( proc_entry == NULL )
+		goto bad;
+
+	printk(KERN_INFO "cs598: Kernel module loaded\n");
+
+	goto end;
+ bad:
+	printk(KERN_INFO "cs598: Error");
+	ret = -ENOMEM;
+ end:
+	return ret;
 }
 
-void cleanup_module(void) {
-	// Unregister device
-	unregister_chrdev(DEV_MAJOR_NUM, DEV_NAME);
+static void __exit cs598_exit_module(void)
+{
+	/* Remove the proc entries */
+	remove_proc_entry("hash",proc_dir);
+	remove_proc_entry("cs598",NULL);
+
+	printk(KERN_INFO "cs598: Kernel module removed\n");
 }
+
+module_init(cs598_init_module);
+module_exit(cs598_exit_module);
+
+MODULE_LICENSE("GPL");
