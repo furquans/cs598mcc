@@ -56,6 +56,7 @@ static int cs598_kernel_thread_fn(void *unused)
       data = kmap(page);
       if(!data) {
         printk(KERN_ALERT "cs598: couldn't map page with pfn %u\n", curr_pfn);
+        break;
       }
   
       //FIXME: calculate hash here 
