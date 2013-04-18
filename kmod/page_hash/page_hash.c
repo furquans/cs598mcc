@@ -7,6 +7,9 @@
 #include <asm/uaccess.h>
 #include <linux/kthread.h>
 #include <linux/sched.h>
+#include <linux/mm.h>
+#include <linux/bootmem.h>
+#include <linux/highmem.h>
 
 #include "page_hash.h"
 
@@ -21,6 +24,10 @@ static DECLARE_WAIT_QUEUE_HEAD (cs598_waitqueue);
 
 static int cs598_kernel_thread_fn(void *unused)
 {
+  unsigned long curr_pfn;
+  struct page *page;
+  void *data;
+
 	/* Declare a waitqueue */
 	DECLARE_WAITQUEUE(wait,current);
 
@@ -41,6 +48,21 @@ static int cs598_kernel_thread_fn(void *unused)
 		}
 
 		printk(KERN_INFO "cs598: hash invoked by procfs\n");
+
+    /* Loop over all of phys memory */
+		printk(KERN_INFO "cs598: number of physical pages %u\n", num_physpages);
+    for(curr_pfn=1;curr_pfn<num_physpages;curr_pfn++) {
+      page = pfn_to_page(curr_pfn);  
+      data = kmap(page);
+      if(!data) {
+        printk(KERN_ALERT "cs598: couldn't map page with pfn %u\n", curr_pfn);
+      }
+  
+      //FIXME: calculate hash here 
+      kunmap(data);
+    }
+
+		printk(KERN_INFO "cs598: Finished computing hashes\n");
 	}
 
 	/* exiting thread, set it to running state */
