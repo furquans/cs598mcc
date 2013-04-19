@@ -10,8 +10,15 @@
 #include <linux/mm.h>
 #include <linux/bootmem.h>
 #include <linux/highmem.h>
+#include <linux/crypto.h>
+#include <crypto/hash.h>
 
 #include "page_hash.h"
+
+/* hash parameters */
+#define HASH_SIZE 20
+#define HASH_ALG "sha1"
+
 
 /* Proc dir and proc entry to be added */
 static struct proc_dir_entry *proc_dir, *proc_entry;
@@ -27,12 +34,26 @@ static int cs598_kernel_thread_fn(void *unused)
   unsigned long curr_pfn;
   struct page *page;
   void *data;
+  struct crypto_shash *tfm;
+  struct shash_desc desc; //Hopefully this can go on the stack
+  u8 *hash;
 
 	/* Declare a waitqueue */
 	DECLARE_WAITQUEUE(wait,current);
 
 	/* Add wait queue to the head */
 	add_wait_queue(&cs598_waitqueue,&wait);
+
+  /* Initialize crypto subsystem */
+  tfm = crypto_alloc_shash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
+  desc.tfm = tfm;
+  desc.flags = 0;
+  crypto_shash_init(&desc);
+  hash = kmalloc(HASH_SIZE, GFP_KERNEL);
+  if(!hash) {
+    printk(KERN_ALERT "cs598: couldn't allocate memory for hash\n");
+    goto end; 
+  }
 
 	while (1) {
 		/* Set current state to interruptible */
@@ -50,15 +71,15 @@ static int cs598_kernel_thread_fn(void *unused)
 		printk(KERN_INFO "cs598: hash invoked by procfs\n");
 
     /* Loop over all of phys memory */
-		printk(KERN_INFO "cs598: number of physical pages %u\n", num_physpages);
+		printk(KERN_INFO "cs598: number of physical pages %lu\n", num_physpages);
     for(curr_pfn=1;curr_pfn<num_physpages;curr_pfn++) {
       page = pfn_to_page(curr_pfn);  
       data = kmap(page);
       if(!data) {
-        printk(KERN_ALERT "cs598: couldn't map page with pfn %u\n", curr_pfn);
+        printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
         break;
       }
-  
+      crypto_shash_digest(&desc, data, PAGE_SIZE, hash);
       //FIXME: calculate hash here 
       kunmap(data);
     }
@@ -66,6 +87,7 @@ static int cs598_kernel_thread_fn(void *unused)
 		printk(KERN_INFO "cs598: Finished computing hashes\n");
 	}
 
+  end:
 	/* exiting thread, set it to running state */
 	set_current_state(TASK_RUNNING);
 
