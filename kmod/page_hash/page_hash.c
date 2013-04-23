@@ -29,6 +29,9 @@ static struct task_struct *cs598_kernel_thread;
 /* Wait queue for kernel thread to wait on */
 static DECLARE_WAIT_QUEUE_HEAD (cs598_waitqueue);
 
+/* convert hash to string */
+static void hash_to_str(char *hash, char *buf);
+
 static int cs598_kernel_thread_fn(void *unused)
 {
   unsigned long curr_pfn;
@@ -37,6 +40,7 @@ static int cs598_kernel_thread_fn(void *unused)
   struct crypto_shash *tfm;
   struct shash_desc desc; //Hopefully this can go on the stack
   u8 *hash;
+  char *str;
 
 	/* Declare a waitqueue */
 	DECLARE_WAITQUEUE(wait,current);
@@ -80,7 +84,13 @@ static int cs598_kernel_thread_fn(void *unused)
         break;
       }
       crypto_shash_digest(&desc, data, PAGE_SIZE, hash);
-      //FIXME: calculate hash here 
+      //print a random hash
+      if(curr_pfn == 500) {
+        str=kmalloc(2*HASH_SIZE+1, GFP_KERNEL);
+        str[HASH_SIZE] = '\0'; //ensure string is null terminated
+        hash_to_str(hash, str);  
+        printk(KERN_INFO "cs598: sample hash %s\n", str);
+      }
       kunmap(data);
     }
 
@@ -160,6 +170,12 @@ static void __exit cs598_exit_module(void)
 	kthread_stop(cs598_kernel_thread);
 
 	printk(KERN_INFO "cs598: Kernel module removed\n");
+}
+
+static void hash_to_str(char *hash, char *buf) {
+  int i;  
+  for(i=0;i<HASH_SIZE;i++)
+    sprintf((char*)&(buf[i*2]), "%02x", hash[i]);
 }
 
 module_init(cs598_init_module);
