@@ -34,13 +34,13 @@ static void hash_to_str(char *hash, char *buf);
 
 static int cs598_kernel_thread_fn(void *unused)
 {
-  unsigned long curr_pfn;
-  struct page *page;
-  void *data;
-  struct crypto_shash *tfm;
-  struct shash_desc desc; //Hopefully this can go on the stack
-  u8 *hash;
-  char *str;
+	unsigned long curr_pfn;
+	struct page *page;
+	void *data;
+	struct crypto_shash *tfm;
+	struct shash_desc desc; //Hopefully this can go on the stack
+	u8 *hash;
+	char *str;
 
 	/* Declare a waitqueue */
 	DECLARE_WAITQUEUE(wait,current);
@@ -48,16 +48,16 @@ static int cs598_kernel_thread_fn(void *unused)
 	/* Add wait queue to the head */
 	add_wait_queue(&cs598_waitqueue,&wait);
 
-  /* Initialize crypto subsystem */
-  tfm = crypto_alloc_shash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
-  desc.tfm = tfm;
-  desc.flags = 0;
-  crypto_shash_init(&desc);
-  hash = kmalloc(HASH_SIZE, GFP_KERNEL);
-  if(!hash) {
-    printk(KERN_ALERT "cs598: couldn't allocate memory for hash\n");
-    goto end; 
-  }
+	/* Initialize crypto subsystem */
+	tfm = crypto_alloc_shash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
+	desc.tfm = tfm;
+	desc.flags = 0;
+	crypto_shash_init(&desc);
+	hash = kmalloc(HASH_SIZE, GFP_KERNEL);
+	if(!hash) {
+		printk(KERN_ALERT "cs598: couldn't allocate memory for hash\n");
+		goto end; 
+	}
 
 	while (1) {
 		/* Set current state to interruptible */
@@ -74,33 +74,33 @@ static int cs598_kernel_thread_fn(void *unused)
 
 		printk(KERN_INFO "cs598: hash invoked by procfs\n");
 
-    /* Loop over all of phys memory */
+		/* Loop over all of phys memory */
 		printk(KERN_INFO "cs598: number of physical pages %lu\n", num_physpages);
-    for(curr_pfn=1;curr_pfn<num_physpages;curr_pfn++) {
-      page = pfn_to_page(curr_pfn);  
-      data = kmap(page);
-      if(!data) {
-        printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
-        break;
-      }
-      crypto_shash_digest(&desc, data, PAGE_SIZE, hash);
-      //print a random hash
-      if(curr_pfn == 500) {
-        str=kmalloc(2*HASH_SIZE+1, GFP_KERNEL);
-        str[HASH_SIZE] = '\0'; //ensure string is null terminated
-        hash_to_str(hash, str);  
-        printk(KERN_INFO "cs598: sample hash %s\n", str);
-      }
-      kunmap(data);
-    }
-
+		for(curr_pfn=1;curr_pfn<num_physpages;curr_pfn++) {
+			page = pfn_to_page(curr_pfn);  
+			data = kmap(page);
+			if(!data) {
+				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
+				break;
+			}
+			crypto_shash_digest(&desc, data, PAGE_SIZE, hash);
+			//print a random hash
+			if(curr_pfn == 500) {
+				str=kmalloc(2*HASH_SIZE+1, GFP_KERNEL);
+				str[HASH_SIZE] = '\0'; //ensure string is null terminated
+				hash_to_str(hash, str);  
+				printk(KERN_INFO "cs598: sample hash %s\n", str);
+			}
+			kunmap(data);
+		}
+		
 		printk(KERN_INFO "cs598: Finished computing hashes\n");
 	}
-
-  end:
+	
+ end:
 	/* exiting thread, set it to running state */
 	set_current_state(TASK_RUNNING);
-
+	
 	/* remove the waitqueue */
 	remove_wait_queue(&cs598_waitqueue, &wait);
 
@@ -173,9 +173,9 @@ static void __exit cs598_exit_module(void)
 }
 
 static void hash_to_str(char *hash, char *buf) {
-  int i;  
-  for(i=0;i<HASH_SIZE;i++)
-    sprintf((char*)&(buf[i*2]), "%02x", hash[i]);
+	int i;  
+	for(i=0;i<HASH_SIZE;i++)
+		sprintf((char*)&(buf[i*2]), "%02x", hash[i]);
 }
 
 module_init(cs598_init_module);
