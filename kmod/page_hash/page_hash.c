@@ -21,7 +21,6 @@
 #define HASH_SIZE 20
 #define HASH_ALG "sha1"
 
-
 /* Number of pages to store hash -- considering 512MB of memory to hash*/
 #define NPAGES 157
 
@@ -35,7 +34,7 @@ static struct task_struct *cs598_kernel_thread;
 static DECLARE_WAIT_QUEUE_HEAD (cs598_waitqueue);
 
 /* Buffer to be shared with user space process */
-static unsigned long *vmalloc_buffer;
+static u8 *vmalloc_buffer;
 
 /* Character device specific */
 static int cs598_dev_major, cs598_dev_minor = 0;
@@ -52,6 +51,9 @@ static struct file_operations cs598_dev_fops = {
 	.mmap = cs598_dev_mmap,
 };
 
+/* Hash done flag */
+static int hash_done_flag = 0;
+
 /* convert hash to string */
 static void hash_to_str(char *hash, char *buf);
 
@@ -62,7 +64,6 @@ static int cs598_kernel_thread_fn(void *unused)
 	void *data;
 	struct crypto_shash *tfm;
 	struct shash_desc desc; //Hopefully this can go on the stack
-	u8 *hash;
 	char *str;
 
 	/* Declare a waitqueue */
@@ -76,11 +77,6 @@ static int cs598_kernel_thread_fn(void *unused)
 	desc.tfm = tfm;
 	desc.flags = 0;
 	crypto_shash_init(&desc);
-	hash = kmalloc(HASH_SIZE, GFP_KERNEL);
-	if(!hash) {
-		printk(KERN_ALERT "cs598: couldn't allocate memory for hash\n");
-		goto end; 
-	}
 
 	while (1) {
 		/* Set current state to interruptible */
@@ -106,21 +102,20 @@ static int cs598_kernel_thread_fn(void *unused)
 				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
 				break;
 			}
-			crypto_shash_digest(&desc, data, PAGE_SIZE, hash);
+			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+curr_pfn);
 			//print a random hash
 			if(curr_pfn == 500) {
 				str=kmalloc(2*HASH_SIZE+1, GFP_KERNEL);
 				str[HASH_SIZE] = '\0'; //ensure string is null terminated
-				hash_to_str(hash, str);  
+				hash_to_str(vmalloc_buffer+curr_pfn, str);  
 				printk(KERN_INFO "cs598: sample hash %s\n", str);
 			}
 			kunmap(data);
 		}
-		
+		hash_done_flag = 1;
 		printk(KERN_INFO "cs598: Finished computing hashes\n");
 	}
 	
- end:
 	/* exiting thread, set it to running state */
 	set_current_state(TASK_RUNNING);
 	
@@ -139,6 +134,12 @@ static int cs598_write_proc(struct file *filp,
 {
 	wake_up_interruptible(&cs598_waitqueue);
 	return len;
+}
+
+static int cs598_read_proc(char *page, char **start, off_t off,
+			   int count, int *eof, void *data)
+{
+	return sprintf(page, "%d", hash_done_flag);
 }
 
 static int allocate_buffer(void)
@@ -241,7 +242,7 @@ static void cs598_destroy_char_dev(void)
 	unregister_chrdev_region(cs598_dev, cs598_nr_devs);
 }
 
-static int __init cs598_init_module()
+static int __init cs598_init_module(void)
 {
 	int ret = 0;
 
@@ -256,6 +257,7 @@ static int __init cs598_init_module()
 		goto bad;
 
 	proc_entry->write_proc = cs598_write_proc;
+	proc_entry->read_proc = cs598_read_proc;
 
 	/* Create a kernel thread that calculates the hash of phy mem */
 	cs598_kernel_thread = kthread_run(cs598_kernel_thread_fn,
