@@ -12,6 +12,8 @@
 #include <linux/highmem.h>
 #include <linux/crypto.h>
 #include <crypto/hash.h>
+#include <linux/cdev.h>
+#include <linux/kdev_t.h>
 
 #include "page_hash.h"
 
@@ -19,6 +21,9 @@
 #define HASH_SIZE 20
 #define HASH_ALG "sha1"
 
+
+/* Number of pages to store hash -- considering 512MB of memory to hash*/
+#define NPAGES 157
 
 /* Proc dir and proc entry to be added */
 static struct proc_dir_entry *proc_dir, *proc_entry;
@@ -28,6 +33,24 @@ static struct task_struct *cs598_kernel_thread;
 
 /* Wait queue for kernel thread to wait on */
 static DECLARE_WAIT_QUEUE_HEAD (cs598_waitqueue);
+
+/* Buffer to be shared with user space process */
+static unsigned long *vmalloc_buffer;
+
+/* Character device specific */
+static int cs598_dev_major, cs598_dev_minor = 0;
+static int cs598_nr_devs = 1;
+static dev_t cs598_dev;
+static struct cdev *cs598_cdev;
+
+int cs598_dev_mmap(struct file *, struct vm_area_struct *);
+
+static struct file_operations cs598_dev_fops = {
+	.owner = THIS_MODULE,
+	.open = NULL,
+	.release = NULL,
+	.mmap = cs598_dev_mmap,
+};
 
 /* convert hash to string */
 static void hash_to_str(char *hash, char *buf);
@@ -118,6 +141,106 @@ static int cs598_write_proc(struct file *filp,
 	return len;
 }
 
+static int allocate_buffer(void)
+{
+	int i;
+
+	if ((vmalloc_buffer = vzalloc(NPAGES * PAGE_SIZE)) == NULL) {
+		return -ENOMEM;
+	}
+
+	/* Set PG_RESERVED bit of pages to avoid MMU from swapping out the pages */
+	/* Done for every page */
+	for (i = 0; i < NPAGES*PAGE_SIZE; i += PAGE_SIZE) {
+		SetPageReserved(vmalloc_to_page((void*)(((unsigned long)vmalloc_buffer)
+							+ i)));
+	}
+
+	return 0;
+}
+
+static void free_buffer(void)
+{
+	int i;
+
+	/* Clear the PG_RESERVED bits of the pages */
+	for (i = 0;i < NPAGES*PAGE_SIZE;i += PAGE_SIZE) {
+		ClearPageReserved(vmalloc_to_page((void*)(((unsigned long)vmalloc_buffer)
+							  + i)));
+	}
+
+	vfree(vmalloc_buffer);
+}
+
+static int cs598_create_char_dev(void)
+{
+	int result = 0;
+
+	/* Dynamically allocate a major number for the device */
+	result = alloc_chrdev_region(&cs598_dev,
+				     cs598_dev_minor,
+				     cs598_nr_devs,
+				     "my_char_dev");
+	cs598_dev_major = result;
+	if (result < 0) {
+		printk(KERN_INFO "cs598: Char dev cannot get major\n");
+		return result;
+	}
+
+	/* Allocate a character device structure */
+	cs598_cdev = cdev_alloc();
+
+	/* Assign the function pointers */
+	cs598_cdev->ops = &cs598_dev_fops;
+	cs598_cdev->owner = THIS_MODULE;
+
+	/* Add this character device */
+	result = cdev_add(cs598_cdev, cs598_dev, 1);
+	if (result) {
+		printk(KERN_INFO "cs598: Error adding device\n");
+		return result;
+	}
+	return result;
+}
+
+int cs598_dev_mmap(struct file *fp, struct vm_area_struct *vma)
+{
+	int ret,i;
+	unsigned long length = vma->vm_end - vma->vm_start;
+
+	if (length > NPAGES * PAGE_SIZE) {
+		return -EIO;
+	}
+
+	/* Done for every page */
+	for (i=0; i < length; i+=PAGE_SIZE) {
+		/* Remap every page in the virtual address space of the user process.
+		   This is required so that the process can access with correct privilege
+		   Else MMU will report violation */
+		if ((ret = remap_pfn_range(vma,
+					   vma->vm_start + i,
+					   /* Convert virtual address to page frame number */
+					   vmalloc_to_pfn((void*)(((unsigned long)vmalloc_buffer)
+								  + i)),
+					   PAGE_SIZE,
+					   vma->vm_page_prot)) < 0) {
+			printk(KERN_INFO "cs598:mmap failed");
+			return ret;
+		}
+	}
+	printk(KERN_INFO "cs598:mmap successful");
+	return 0;
+}
+
+static void cs598_destroy_char_dev(void)
+{
+	/* Delete the character device */
+	cdev_del(cs598_cdev);
+
+	/* Unregister the character device */
+	unregister_chrdev_region(cs598_dev, cs598_nr_devs);
+}
+
 static int __init cs598_init_module()
 {
 	int ret = 0;
@@ -141,10 +264,25 @@ static int __init cs598_init_module()
 	if ( cs598_kernel_thread == NULL )
 		goto bad;
 
+	/* Allocate buffer to share with user app */
+	if (allocate_buffer() == -ENOMEM) {
+		ret = -ENOMEM;
+		goto bad;
+	}
+
+	/* Create a character device */
+	if ((ret = cs598_create_char_dev()) != 0) {
+		goto bad;
+	}
+
 	printk(KERN_INFO "cs598: Kernel module loaded\n");
 
 	goto end;
  bad:
+	if ( vmalloc_buffer ) {
+		free_buffer();
+	}
+
 	if ( proc_entry ) {
 		remove_proc_entry("hash",proc_dir);
 	}
@@ -168,6 +306,12 @@ static void __exit cs598_exit_module(void)
 
 	/* now stop the thread */
 	kthread_stop(cs598_kernel_thread);
+
+	/* Free allocated buffer */
+	free_buffer();
+
+	/* Destroy character device */
+	cs598_destroy_char_dev();
 
 	printk(KERN_INFO "cs598: Kernel module removed\n");
 }
