@@ -5,7 +5,7 @@
 NODENAME="node"
 DEVNAME="my_char_dev"
 MODNAME="page_hash"
-[[ -c $NODENAME ]] && rm $NODENAME
+[[ -c $NODENAME ]] && rm $NODENAME && sleep 1
 [[ `lsmod | grep ${MODNAME}` ]] && rmmod ./${MODNAME}.ko
 insmod ./${MODNAME}.ko
 mknod $NODENAME c `grep $DEVNAME /proc/devices | cut -f1 -d' '` 0
