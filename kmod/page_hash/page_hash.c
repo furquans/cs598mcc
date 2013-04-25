@@ -102,13 +102,16 @@ static int cs598_kernel_thread_fn(void *unused)
 				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
 				break;
 			}
-			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+curr_pfn);
+			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+curr_pfn*5);
 			//print a random hash
 			if(curr_pfn == 500) {
 				str=kmalloc(2*HASH_SIZE+1, GFP_KERNEL);
 				str[HASH_SIZE] = '\0'; //ensure string is null terminated
-				hash_to_str(vmalloc_buffer+curr_pfn, str);  
+				hash_to_str(vmalloc_buffer+curr_pfn*5, str);  
 				printk(KERN_INFO "cs598: sample hash %s\n", str);
+				kfree(str);
+				kunmap(data);
+				break;
 			}
 			kunmap(data);
 		}
