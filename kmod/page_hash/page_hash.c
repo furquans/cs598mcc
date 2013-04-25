@@ -22,7 +22,7 @@
 #define HASH_ALG "sha1"
 
 /* Number of pages to store hash -- considering 512MB of memory to hash*/
-#define NPAGES 157
+#define NPAGES num_physpages
 
 /* Proc dir and proc entry to be added */
 static struct proc_dir_entry *proc_dir, *proc_entry;
@@ -95,24 +95,15 @@ static int cs598_kernel_thread_fn(void *unused)
 
 		/* Loop over all of phys memory */
 		printk(KERN_INFO "cs598: number of physical pages %lu\n", num_physpages);
-		for(curr_pfn=1;curr_pfn<num_physpages;curr_pfn++) {
+		printk(KERN_INFO "cs598: number of pages that will be hashed %lu\n", NPAGES);
+		for(curr_pfn=1;curr_pfn<NPAGES;curr_pfn++) {
 			page = pfn_to_page(curr_pfn);  
 			data = kmap(page);
 			if(!data) {
 				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
 				break;
 			}
-			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+curr_pfn*5);
-			//print a random hash
-			if(curr_pfn == 500) {
-				str=kmalloc(2*HASH_SIZE+1, GFP_KERNEL);
-				str[HASH_SIZE] = '\0'; //ensure string is null terminated
-				hash_to_str(vmalloc_buffer+curr_pfn*5, str);  
-				printk(KERN_INFO "cs598: sample hash %s\n", str);
-				kfree(str);
-				kunmap(data);
-				break;
-			}
+			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+(curr_pfn*HASH_SIZE));
 			kunmap(data);
 		}
 		hash_done_flag = 1;
@@ -149,15 +140,15 @@ static int allocate_buffer(void)
 {
 	int i;
 
-	if ((vmalloc_buffer = vzalloc(NPAGES * PAGE_SIZE)) == NULL) {
+	if ((vmalloc_buffer = vzalloc(NPAGES * HASH_SIZE)) == NULL) {
 		return -ENOMEM;
 	}
 
 	/* Set PG_RESERVED bit of pages to avoid MMU from swapping out the pages */
 	/* Done for every page */
-	for (i = 0; i < NPAGES*PAGE_SIZE; i += PAGE_SIZE) {
+	for (i = 0; i < NPAGES; i++) {
 		SetPageReserved(vmalloc_to_page((void*)(((unsigned long)vmalloc_buffer)
-							+ i)));
+							+ (i*HASH_SIZE))));
 	}
 
 	return 0;
@@ -168,9 +159,9 @@ static void free_buffer(void)
 	int i;
 
 	/* Clear the PG_RESERVED bits of the pages */
-	for (i = 0;i < NPAGES*PAGE_SIZE;i += PAGE_SIZE) {
+	for (i = 0;i < NPAGES;i++ ) {
 		ClearPageReserved(vmalloc_to_page((void*)(((unsigned long)vmalloc_buffer)
-							  + i)));
+							  + (i*HASH_SIZE))));
 	}
 
 	vfree(vmalloc_buffer);
@@ -212,7 +203,7 @@ int cs598_dev_mmap(struct file *fp, struct vm_area_struct *vma)
 	int ret,i;
 	unsigned long length = vma->vm_end - vma->vm_start;
 
-	if (length > NPAGES * PAGE_SIZE) {
+	if (length > (NPAGES * HASH_SIZE)) {
 		return -EIO;
 	}
 

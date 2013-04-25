@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-#define NPAGES 157
+#define NPAGES 100
+#define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 
 static int buf_fd = -1;
 static int buf_len;
@@ -18,7 +19,7 @@ void *buf_init(char *fname)
 {
   unsigned int *kadr;
 
-  buf_len = NPAGES * getpagesize();
+  buf_len = NPAGES * HASH_SIZE;
   if ((buf_fd = open(fname, O_RDWR|O_SYNC)) < 0) {
     printf("file open error %s\n",fname);
     return NULL;
@@ -31,7 +32,7 @@ void *buf_init(char *fname)
 	      buf_fd,
 	      0);
   if (kadr == MAP_FAILED) {
-    printf("buf file open error\n");
+    perror("buf file open error");
     return NULL;
   }
   return kadr;
@@ -44,8 +45,9 @@ void buf_exit()
 
 static void hash_to_str(char *hash, char *buf) {
   int i;  
-  for(i=0;i<HASH_SIZE;i++)
+  for(i=0;i<HASH_SIZE;i++) {
     sprintf((char*)&(buf[i*2]), "%02x", hash[i]);
+  }
 }
 
 
@@ -59,14 +61,14 @@ int main(int argc, char **argv)
   if (!buf)
     return -1;
 
+  str = malloc((2*HASH_SIZE)+1);
+  str[(2*HASH_SIZE)+1] = '\0';
   while (index <= 500) {
-    str = malloc(2*HASH_SIZE+1);
-    str[HASH_SIZE] = '\0';
-    hash_to_str(buf+index*5,str);
+    hash_to_str(buf+(index*HASH_SIZE),str);
     printf("Hash %d:%s\n",index,str);
     index++;
-    free(str);
   } 
+  free(str);
 
   buf_exit();
 }
