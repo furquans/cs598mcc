@@ -54,9 +54,6 @@ static struct file_operations cs598_dev_fops = {
 /* Hash done flag */
 static int hash_done_flag = 0;
 
-/* convert hash to string */
-static void hash_to_str(char *hash, char *buf);
-
 static int cs598_kernel_thread_fn(void *unused)
 {
 	unsigned long curr_pfn;
@@ -64,19 +61,13 @@ static int cs598_kernel_thread_fn(void *unused)
 	void *data;
 	struct crypto_shash *tfm;
 	struct shash_desc desc; //Hopefully this can go on the stack
-	char *str;
+	int err;
 
 	/* Declare a waitqueue */
 	DECLARE_WAITQUEUE(wait,current);
 
 	/* Add wait queue to the head */
 	add_wait_queue(&cs598_waitqueue,&wait);
-
-	/* Initialize crypto subsystem */
-	tfm = crypto_alloc_shash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
-	desc.tfm = tfm;
-	desc.flags = 0;
-	crypto_shash_init(&desc);
 
 	while (1) {
 		/* Set current state to interruptible */
@@ -103,11 +94,19 @@ static int cs598_kernel_thread_fn(void *unused)
 				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
 				break;
 			}
-			tfm = crypto_alloc_shash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
+			tfm = crypto_alloc_shash(HASH_ALG, 0, 0);
 			desc.tfm = tfm;
-			desc.flags = 0;
-			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+(curr_pfn*HASH_SIZE));
+			desc.flags = CRYPTO_TFM_REQ_MAY_SLEEP;
+			err = crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+(curr_pfn*HASH_SIZE));
+			if(err) {
+				printk(KERN_ALERT "cs598: crypto_shash_digest returned: %d\n",
+						err);
+				kunmap(data);
+				crypto_free_shash(tfm);
+				break;
+			}
 			kunmap(data);
+			crypto_free_shash(tfm);
             //Don't bring everything to an absolute halt
             if(curr_pfn % 10000)
                 schedule();
@@ -318,11 +317,6 @@ static void __exit cs598_exit_module(void)
 	printk(KERN_INFO "cs598: Kernel module removed\n");
 }
 
-static void hash_to_str(char *hash, char *buf) {
-	int i;  
-	for(i=0;i<HASH_SIZE;i++)
-		sprintf((char*)&(buf[i*2]), "%02x", hash[i]);
-}
 
 module_init(cs598_init_module);
 module_exit(cs598_exit_module);
