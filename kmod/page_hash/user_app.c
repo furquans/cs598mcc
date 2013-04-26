@@ -7,7 +7,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-#define NPAGES 100
+//#define NPAGES sysconf(_SC_PHYS_PAGES)
+#define NPAGES 500
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 
 static int buf_fd = -1;
@@ -54,7 +55,7 @@ static void hash_to_str(char *hash, char *buf) {
 int main(int argc, char **argv)
 {
   char *buf;
-  int index = 1;
+  int index = 0;
   char *str;
 
   buf = buf_init("node");
@@ -62,10 +63,11 @@ int main(int argc, char **argv)
     return -1;
 
   str = malloc((2*HASH_SIZE)+1);
-  str[(2*HASH_SIZE)+1] = '\0';
-  while (index <= 500) {
+  while (index <= NPAGES) {
     hash_to_str(buf+(index*HASH_SIZE),str);
-    printf("Hash %d:%s\n",index,str);
+    //The index e.g. 40 corresponds to the 41st char
+    str[(2*HASH_SIZE)] = '\0';
+    printf("Hash %5d:%s\n",index,str);
     index++;
   } 
   free(str);

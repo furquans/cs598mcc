@@ -103,8 +103,14 @@ static int cs598_kernel_thread_fn(void *unused)
 				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
 				break;
 			}
+			tfm = crypto_alloc_shash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
+			desc.tfm = tfm;
+			desc.flags = 0;
 			crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+(curr_pfn*HASH_SIZE));
 			kunmap(data);
+            //Don't bring everything to an absolute halt
+            if(curr_pfn % 10000)
+                schedule();
 		}
 		hash_done_flag = 1;
 		printk(KERN_INFO "cs598: Finished computing hashes\n");
