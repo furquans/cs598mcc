@@ -14,6 +14,7 @@
 #include <crypto/hash.h>
 #include <linux/cdev.h>
 #include <linux/kdev_t.h>
+#include <linux/scatterlist.h>
 
 #include "page_hash.h"
 
@@ -23,6 +24,7 @@
 
 /* Number of pages to store hash -- considering 512MB of memory to hash*/
 #define NPAGES num_physpages
+//#define NPAGES 500
 
 /* Proc dir and proc entry to be added */
 static struct proc_dir_entry *proc_dir, *proc_entry;
@@ -58,9 +60,10 @@ static int cs598_kernel_thread_fn(void *unused)
 {
 	unsigned long curr_pfn;
 	struct page *page;
-	void *data;
-	struct crypto_shash *tfm;
-	struct shash_desc desc; //Hopefully this can go on the stack
+	void *data, *pagebuf;
+	struct crypto_hash *tfm;
+	struct scatterlist sg;
+	struct hash_desc desc; //Hopefully this can go on the stack
 	int err;
 
 	/* Declare a waitqueue */
@@ -68,7 +71,6 @@ static int cs598_kernel_thread_fn(void *unused)
 
 	/* Add wait queue to the head */
 	add_wait_queue(&cs598_waitqueue,&wait);
-
 	while (1) {
 		/* Set current state to interruptible */
 		set_current_state(TASK_INTERRUPTIBLE);
@@ -87,6 +89,7 @@ static int cs598_kernel_thread_fn(void *unused)
 		/* Loop over all of phys memory */
 		printk(KERN_INFO "cs598: number of physical pages %lu\n", num_physpages);
 		printk(KERN_INFO "cs598: number of pages that will be hashed %lu\n", NPAGES);
+
 		for(curr_pfn=1;curr_pfn<NPAGES;curr_pfn++) {
 			page = pfn_to_page(curr_pfn);  
 			data = kmap(page);
@@ -94,19 +97,38 @@ static int cs598_kernel_thread_fn(void *unused)
 				printk(KERN_ALERT "cs598: couldn't map page with pfn %lu\n", curr_pfn);
 				break;
 			}
-			tfm = crypto_alloc_shash(HASH_ALG, 0, 0);
+			tfm = crypto_alloc_hash(HASH_ALG, 0, CRYPTO_ALG_ASYNC);
+			if(tfm == NULL) {
+				printk(KERN_ALERT "cs598: got NULL tfm \n");
+				kunmap(data);
+				break;
+			}
 			desc.tfm = tfm;
-			desc.flags = CRYPTO_TFM_REQ_MAY_SLEEP;
-			err = crypto_shash_digest(&desc, data, PAGE_SIZE, vmalloc_buffer+(curr_pfn*HASH_SIZE));
+			desc.flags = 0;
+			if(curr_pfn == 1)
+				printk(KERN_INFO "cs598: hash size %d\n", crypto_hash_digestsize(tfm));
+			if(crypto_hash_digestsize(tfm) > HASH_SIZE) {
+				printk(KERN_ALERT "cs598: hash alg report size of %d, but HASH_SIZE = %d\n", crypto_hash_digestsize(tfm),HASH_SIZE);
+				goto done_error;
+			}
+			//pagebuf = kmalloc(PAGE_SIZE, GFP_USER);
+			//memcpy(pagebuf, data, PAGE_SIZE);
+			sg_init_one(&sg, data, PAGE_SIZE);
+			crypto_hash_init(&desc);	
+			err = crypto_hash_update(&desc, &sg, PAGE_SIZE);
+			if(err) {
+				printk(KERN_ALERT "cs598: crypto_shash_update returned: %d\n",
+						err);
+				goto done_error;
+			}
+            err = crypto_hash_final(&desc, vmalloc_buffer+(curr_pfn*HASH_SIZE));
 			if(err) {
 				printk(KERN_ALERT "cs598: crypto_shash_digest returned: %d\n",
 						err);
-				kunmap(data);
-				crypto_free_shash(tfm);
-				break;
+				goto done_error;
 			}
 			kunmap(data);
-			crypto_free_shash(tfm);
+			crypto_free_hash(tfm);
             //Don't bring everything to an absolute halt
             if(curr_pfn % 10000)
                 schedule();
@@ -124,6 +146,13 @@ static int cs598_kernel_thread_fn(void *unused)
 	printk(KERN_INFO "cs598: thread killed\n");
 
 	return 0;
+	done_error:
+		kunmap(data);	
+		crypto_free_hash(tfm);
+		printk(KERN_INFO "cs598: aborted computing hashes\n");
+		set_current_state(TASK_RUNNING);
+		remove_wait_queue(&cs598_waitqueue, &wait);
+		return 0;
 }
 
 static int cs598_write_proc(struct file *filp,

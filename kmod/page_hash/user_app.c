@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 
-//#define NPAGES sysconf(_SC_PHYS_PAGES)
-#define NPAGES 500
+#define NPAGES sysconf(_SC_PHYS_PAGES)
+//#define NPAGES 100
 #define PAGE_SIZE sysconf(_SC_PAGE_SIZE)
 
 static int buf_fd = -1;
