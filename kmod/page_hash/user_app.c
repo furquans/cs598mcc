@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/mman.h>
+#include <errno.h>
 
 #define NPAGES sysconf(_SC_PHYS_PAGES)
 //#define NPAGES 100
@@ -57,19 +58,29 @@ int main(int argc, char **argv)
   char *buf;
   int index = 0;
   char *str;
+  const char *vmname;
+
+  if (argc < 2) {
+    fprintf(stderr, "usage: %s VMNAME\n", argv[0]);
+    return EINVAL;
+  } 
+
+  vmname = argv[1];
 
   buf = buf_init("node");
   if (!buf)
     return -1;
 
   str = malloc((2*HASH_SIZE)+1);
+  printf("%s ", vmname); 
   while (index <= NPAGES) {
     hash_to_str(buf+(index*HASH_SIZE),str);
     //The index e.g. 40 corresponds to the 41st char
     str[(2*HASH_SIZE)] = '\0';
-    printf("Hash %5d:%s\n",index,str);
+    printf("%s ",str);
     index++;
   } 
+  printf("\n"); 
   free(str);
 
   buf_exit();
