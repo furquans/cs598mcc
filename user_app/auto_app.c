@@ -4,6 +4,8 @@
 
 #define MAX_VM 5
 #define HASH_SIZE 160
+#define STRING_SIZE 1000000000ULL
+#define MAX_VM_NAME 100
 
 struct node {
   struct node *left;
@@ -12,9 +14,10 @@ struct node {
   int count[MAX_VM];
 }di;
 
-int curr_vm = 0;
+int curr_vm = 0, num_vms;
 int total_count = 0,single_copy = 0;
 int total_pages[MAX_VM];
+char vmname[MAX_VM][MAX_VM_NAME];
 
 struct node *allocate_new_node(char *str)
 {
@@ -62,12 +65,7 @@ void insert_BST(struct node **root,
   }
 }
 
-#define STRING_SIZE 1000000000ULL
-#define MAX_VM_NAME 100
-
-void print_stats(int num_vms,
-		 int *vm_ids,
-		 struct node *root)
+void print_stats(struct node *root)
 {
   int count = 0;
   int i = 0;
@@ -77,7 +75,7 @@ void print_stats(int num_vms,
     return;
 
   for (i = 0 ; i < num_vms ; i++) {
-    int val = root->count[vm_ids[i]];
+    int val = root->count[i];
     if (val == 0) {
       flag = 1;
       break;
@@ -88,33 +86,22 @@ void print_stats(int num_vms,
     single_copy++;
     total_count += count;
   }
-  print_stats(num_vms,vm_ids,root->left);
-  print_stats(num_vms,vm_ids,root->right);
+  print_stats(root->left);
+  print_stats(root->right);
 }
 
 void analyze_vms(struct node *root)
 {
-  int num_vms;
   int i;
-  int *vm_ids;
   int actual_pages = 0; 
 
-  do {
-    printf("Enter the number of VMs to consider: ");
-    scanf("%d",&num_vms);
-  } while ((num_vms > curr_vm) || (num_vms < 2));
-
-  vm_ids = malloc(sizeof(*vm_ids) * num_vms);
-
   for (i = 0; i < num_vms; i++) {
-    printf("Enter id of a VM: ");
-    scanf("%d",&vm_ids[i]);
-    actual_pages += total_pages[vm_ids[i]];
+    actual_pages += total_pages[i];
   }
 
   total_count = 0;
   single_copy = 0;
-  print_stats(num_vms, vm_ids, root);
+  print_stats(root);
   printf("Total pages present in duplicates:%d\n",total_count);
   printf("Unique pages in duplicates:%d\n", single_copy);
   printf("Out of actual %d pages occupied in memory,\n",actual_pages);
@@ -124,13 +111,22 @@ void analyze_vms(struct node *root)
 	 actual_pages-total_count+single_copy);
 }
 
+int check_vm_list(char *str)
+{
+  int i = 0;
+
+  for (; i<num_vms; i++) {
+    if (strcmp(vmname[i],str) == 0)
+      return i;
+  }
+  return -1;
+}
 
 int main(int argc,
 	 char **argv)
 {
   struct node *root = NULL;
   int count;
-  char vmname[MAX_VM][MAX_VM_NAME];
   char *str;
   const char *delim = " \n";
   int i = 2;
@@ -138,59 +134,34 @@ int main(int argc,
   str = malloc(STRING_SIZE);
 
   if (argc < 3) {
-    printf("Usage: %s count <filename...>\n",argv[0]);
+    printf("Usage: %s filename VMNAME1 VMNAME2 <VMNAME3...>\n",argv[0]);
     exit(1);
   }
 
-  count = atoi(argv[1]);
-  
+  num_vms = count = argc-2;
+
   while (count) {
-    FILE *fp = fopen(argv[i], "r");
-    char *temp;
-    while (fgets(str,STRING_SIZE,fp)) {
-      temp = strtok(str,delim);
-      total_pages[curr_vm] = 0;
-      strcpy(vmname[curr_vm],temp);
-      printf("Name is %s.\n",vmname[curr_vm]);
-      while (temp = strtok(NULL, delim)) {
-	/* printf("Token: %s.\n",temp); */
-	total_pages[curr_vm]++;
-	insert_BST(&root,temp);
-      }
-      curr_vm++;
-    }
-    fclose(fp);
+    strcpy(vmname[i-2],argv[i]);
     count--;
+    printf("vmname:%s\n",vmname[i-2]);
     i++;
   }
+  
+  FILE *fp = fopen(argv[1], "r");
 
-  printf("::::::::::::::::::Analysis::::::::::::::::::::::::\n");
-  do {
-    int choice;
-    int i = 0;
-    printf("::::::::::::::::::Menu::::::::::::::::::::::::::::\n");
-    printf("1. Display VM Name\n");
-    printf("2. VM analysis\n");
-    printf("3. Exit\n");
-
-    printf("Enter a choice: ");
-    scanf("%d",&choice);
-
-    switch (choice) {
-    case 1:
-      printf("Total VMs: %d\n",curr_vm);
-      for (i=0 ; i < curr_vm; i++) {
-	printf("#%d Name %s Total pages %d\n",i,vmname[i],total_pages[i]);
-      }
-      break;
-    case 2:
-      analyze_vms(root);
-      break;
-    case 3:
-      exit(0);
-    default:
-      printf("error\n");
+  while (fgets(str,STRING_SIZE,fp)) {
+    char *temp;
+    temp = strtok(str,delim);
+    curr_vm = check_vm_list(temp);
+    if (curr_vm == -1)
+      continue;
+    total_pages[curr_vm] = 0;
+    while (temp = strtok(NULL, delim)) {
+      /* printf("Token: %s.\n",temp); */
+      total_pages[curr_vm]++;
+      insert_BST(&root,temp);
     }
-    
-  }while (1);
+  }
+  fclose(fp);
+  analyze_vms(root);
 }
