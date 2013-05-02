@@ -109,6 +109,9 @@ void analyze_vms(struct node *root)
 	 total_count, 
 	 single_copy,
 	 actual_pages-total_count+single_copy);
+  printf("Total pages present in duplicates:%d\n",total_count);
+  printf("Percentage of pages that are duplicates:%g\n",
+         ((double)total_count/(double)actual_pages)*100);
 }
 
 int check_vm_list(char *str)
