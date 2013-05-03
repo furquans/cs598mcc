@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define MAX_VM 5
-#define HASH_SIZE 160
+#define HASH_SIZE 25
 #define STRING_SIZE 1000000000ULL
 #define MAX_VM_NAME 100
 
@@ -22,6 +22,10 @@ char vmname[MAX_VM][MAX_VM_NAME];
 struct node *allocate_new_node(char *str)
 {
   struct node *temp = malloc(sizeof(*temp));
+  if (temp == NULL) {
+    printf("temp allocation failed\n");
+    exit(1);
+  }
   strcpy(temp->key,str);
   memset(temp->count, 0, MAX_VM * sizeof(int));
   temp->count[curr_vm] = 1;
@@ -135,6 +139,11 @@ int main(int argc,
   int i = 2;
 
   str = malloc(STRING_SIZE);
+
+  if (str == NULL) {
+    printf("str allocation failed\n");
+    exit(1);
+  }
 
   if (argc < 3) {
     printf("Usage: %s filename VMNAME1 VMNAME2 <VMNAME3...>\n",argv[0]);
