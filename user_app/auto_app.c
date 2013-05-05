@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_VM 5
+#define MAX_VM 30
 #define HASH_SIZE 41
 #define STRING_SIZE 1000000000ULL
 #define MAX_VM_NAME 100
