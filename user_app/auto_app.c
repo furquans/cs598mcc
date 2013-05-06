@@ -15,7 +15,7 @@ struct node {
 }di;
 
 int curr_vm = 0, num_vms;
-int total_count = 0,single_copy = 0;
+int total_count = 0,single_copy = 0,zeropages_count=0;
 int total_pages[MAX_VM];
 char vmname[MAX_VM][MAX_VM_NAME];
 
@@ -86,6 +86,12 @@ void print_stats(struct node *root)
     }
     count += val;
   }
+
+  if (strcmp(root->key,
+	     "1cffff3dff0e531dffffff6b4fffffffff7bff1d") == 0) {
+    zeropages_count = count;
+  }
+
   if (flag == 0) {
     single_copy++;
     total_count += count;
@@ -105,6 +111,7 @@ void analyze_vms(struct node *root)
 
   total_count = 0;
   single_copy = 0;
+  zeropages_count = 0;
   print_stats(root);
   printf("Total pages present in duplicates:%d\n",total_count);
   printf("Unique pages in duplicates:%d\n", single_copy);
@@ -116,6 +123,8 @@ void analyze_vms(struct node *root)
   printf("Total pages present in duplicates:%d\n",total_count);
   printf("Percentage of pages that are duplicates:%g\n",
          ((double)total_count/(double)actual_pages)*100);
+  printf("Percentage of page that are duplicates excluding zero pages:%g\n",
+	 ((double)(total_count-zeropages_count)/(double)actual_pages)*100);
 }
 
 int check_vm_list(char *str)
