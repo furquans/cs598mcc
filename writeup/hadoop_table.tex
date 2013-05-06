@@ -1,0 +1,16 @@
+\documentclass{article}
+\usepackage[letterpaper,vmargin={1in,1in},hmargin={1in,1in}]{geometry}
+\usepackage{booktabs}
+\begin{document}
+\thispagestyle{empty}
+\begin{tabular}{lccccccccccc}
+  \toprule
+  & \multicolumn{2}{c}{Fresh Boot} && \multicolumn{2}{c}{During Map} && \multicolumn{2}{c}{During Reduce} && \multicolumn{2}{c}{After finishing}\\
+  \cmidrule{2-3} \cmidrule{5-6} \cmidrule{8-9} \cmidrule{11-12}
+  & w/zeros & w/o zeros && w/zeros & w/o zeros && w/zeros & w/o zeros && w/zeros & w/o zeros\\
+  \midrule
+    datanodes & 84 & 42 && 34 & 25 && 36 & 27 && 33 & 23\\
+    full cluster & 72 & 27 && 20 & 11 &&  22 & 11 && 20 & 7\\
+  \bottomrule
+\end{tabular}
+\end{document}
