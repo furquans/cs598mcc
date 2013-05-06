@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_VM 30
+#define MAX_VM 50
 #define HASH_SIZE 41
 #define STRING_SIZE 1000000000ULL
 #define MAX_VM_NAME 100
@@ -123,8 +123,11 @@ void analyze_vms(struct node *root)
   printf("Total pages present in duplicates:%d\n",total_count);
   printf("Percentage of pages that are duplicates:%g\n",
          ((double)total_count/(double)actual_pages)*100);
-  printf("Percentage of page that are duplicates excluding zero pages:%g\n",
+  printf("Percentage of page that are duplicates excluding zero pages over total:%g\n",
 	 ((double)(total_count-zeropages_count)/(double)actual_pages)*100);
+  printf("Percentage of duplicates excluding zero pages normalized:%g\n",
+	 ((double)(total_count-zeropages_count)/((double)actual_pages-
+   (double)zeropages_count))*100);
 }
 
 int check_vm_list(char *str)
