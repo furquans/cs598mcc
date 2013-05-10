@@ -27,6 +27,7 @@
 % For tracking purposes - this is V3.1SP - APRIL 2009
 \documentclass{acm_proc_article-sp}
 \usepackage{graphicx}
+\usepackage{url}
 \newcommand{\tup}[1]{\langle #1\rangle} 
 \begin{document}
 
@@ -113,22 +114,23 @@ Though live migration proves to be a powerful tool in increasing the manageabili
 This project aims at investigating deeper into different practical use cases and determine the amount of memory redundancy that exists across VMs for these cases. The observations and conclusions presented in this paper can be used as a guideline in deciding if it is worthwhile to invest in a distributed solution for exploiting memory redundancy for group live migration.
 \par
 
-\section{Redundancy Evaluation Architecture}
+\section{Redundancy Evaluation Architecture}\label{sec:redundancy}
 
-\subsection{Mathematical Definition for Redundancy}
+\subsection{Mathematical Definition for Redundancy}\label{sec:red_math}
 In this section, we intend to give a succinct definition for what is mean by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
 \begin{equation}
 S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|}{\sum\limits_{i=1}^{N}|P_i|}
-\end{equation}
-where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as the ``pseudo-intersection'' of two multisets.  
-
-
-
-If we let the multisets of pages be represented as sets of ordered pairs where $\tup{P,n}$ denotes that page $P$ appears $n$ times in the multiset,\footnote{The authors would like to gratefully acknowledge the help of Asaf Karagila in formalizing this definition.}
-then we can say:
-\begin{equation}
-A\mathrel{\mathbf{O}}B\equiv\{\tup{x,i+j}\mid\tup{x,i}\in A\land\tup{x,j}\in B\}.
 \end{equation}\label{eqn:s}
+where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as a sort of `intersection' of two multisets that will be clarified momentarily.  
+
+
+
+If we let the multisets of pages be represented as sets of ordered pairs where $\tup{P,n}$ denotes that page $P$ appears $n$ times in the multiset,\footnote{The authors would like to gratefully acknowledge the help of Asaf Karagila in formalizing this definition for the operator $\mathbf{O}$.}
+then we can say:
+\begin{equation}\label{eqn:s}
+A\mathrel{\mathbf{O}}B\equiv\{\tup{x,i+j}\mid\tup{x,i}\in A\land\tup{x,j}\in B\}.
+\end{equation}
+It is easy to see that since $+$ and $\land$ are associative, so is $\mathbf{O}$, and Equation \ref{eqn:s} provides the similarity fraction we wish to obtain.
 
 The operator $\mathbf{O}$ is easily illustrated by a simple example rather than formal definition:
 
@@ -143,14 +145,38 @@ The example above may not be 100\% rigorous as we liberally switch between multi
 
 It should be noted than since many zero pages exist and compression techniques could be used to avoid sending these pages altogether\cite{live_adaptive_compress}, we define another metric $S_z$:
 \begin{equation}
-S_z = \frac{S-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
+S_z = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
 \end{equation}
 where $N_z$ is the total number of zero pages in all VMs:
 \begin{equation}
-N_z = \sum\limits_{i=1,Z\subseteq P_i}|P_i\mathbf{O}Z|-1.
+N_z = \sum\limits_{i=1,Z\subseteq P_i}\left(|P_i\mathbf{O}Z|-1\right).
 \end{equation}\label{eqn:sz}
-In the equation above, $Z$ is the zero page and the $-1$ balances out the extra count we get from the $Z$ on the right-hand-side of $\mathbf{O}$.
+In the equation above, $Z$ is the zero page and the $-1$ balances out the extra count we get from each $Z$ on the right-hand-side of $\mathbf{O}$.
 
+\subsection{Implementation}\label{sec:red_implementation}
+In order to compute $S$ and $S_z$ defined in the previous section, we needed to develop a framework.  A flow diagram for our measuring process is included in Figure \ref{fig:flow}.  We chose to use a Linux kernel module even though it does restrict the type of guest operating systems we can study.  However, the kernel module allowed us to test a greater variety of setups than if we had modified the hypervisor\footnote{Our current implementation, however, is restricted to the x86\_64 architecture since we use {\tt kmap()} to bring pages into virtual memory before computing the hash.  On other architectures (e.g. x86), the kernel has a concept of ``high'' memory and we cannot use the same method for calculating the hash of a physical page}(since we used testbeds involving KVM, Xen, and VirtualBox hypervisors).  Comparing the exact contents of every page in memory would require a massive amount of storage and immense computational power, so we instead used sha1 hash values for each page.  The probability of a collision is extremely low (each 1GB VM represents 262144 hash values with a 4KB page size) and the Linux kernel has a built-in crypto API,\footnote{\url{http://lxr.linux.no/linux+*/Documentation/crypto/api-intro.txt}} so we feel that this choice of hashing function has no negative impact on our results.  We standardized on 1GB VMs as much as possible, though exceptions will be noted throughout the write-up.
+
+The process for calculating similarity is as follows (enumeration matches the flow chart in Figure \ref{fig:flow}):
+\begin{enumerate}
+  \item The user tells the kernel module (via a proc file)  to compute the hash of the VM's physical memory
+  \item The kernel module then starts a kernel thread (kthread)
+  \item The kthread iterates over the physical pages and computes the sha1 hash of every page
+  \item When finished, the kernel module writes a special value to the proc file system
+  \item The proc file can be polled from userspace so that the user can know when to collect the data
+  \item The user starts the collection application
+  \item The collection application communicates with the kernel module via a character device
+  \item The saved hashes are mapped into userspace via the {\tt mmap} system call
+  \item The application then reads the mapped data and outputs it to a file
+  \item Another application takes the aggregated output files and selectively calculates $S$ and $S_z$ (defined in the previous Section) for the desired VM
+  \item The result is obtained
+\end{enumerate}
+Clearly, most of these steps can be automated via simple shell scripting for semi-automated analysis.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/architecture.png}
+  \caption{The architecture used to calculate similarity between virtual machines}\label{fig:flow}
+\end{figure}
 
 \section{Optimistic Upper Bounds}
 Before we proceed with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations.
