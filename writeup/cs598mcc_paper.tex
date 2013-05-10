@@ -27,7 +27,7 @@
 % For tracking purposes - this is V3.1SP - APRIL 2009
 
 \documentclass{acm_proc_article-sp}
-
+\newcommand{\tup}[1]{\langle #1\rangle} 
 \begin{document}
 
 \title{Improving Live Migration: is it even worth it?}
@@ -92,9 +92,46 @@ Virtual Machine Migration \cite{live_gang}
 
 \section{Redundancy Evaluation Architecture}
 
+\subsection{Mathematical Definition for Redundancy}
+In this section, we intend to give a succinct definition for what is mean by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
+\begin{equation}
+S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|}{\sum\limits_{i=1}^{N}|P_i|}
+\end{equation}
+where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as the ``pseudo-intersection'' of two multisets.  
+
+
+
+If we let the multisets of pages be represented as sets of ordered pairs where $\tup{P,n}$ denotes that page $P$ appears $n$ times in the multiset,\footnote{The authors would like to gratefully acknowledge the help of Asaf Karagila in formalizing this definition.}
+then we can say:
+\begin{equation}
+A\mathrel{\mathbf{O}}B\equiv\{\tup{x,i+j}\mid\tup{x,i}\in A\land\tup{x,j}\in B\}.
+\end{equation}\label{eqn:s}
+
+The operator $\mathbf{O}$ is easily illustrated by a simple example rather than formal definition:
+
+\begin{align*}
+\textrm{Let } & A = \{1,1,2,5\},~B = \{1,2,3\}\\
+\textrm{Then } &{\cal A} = \{\tup{1,2}, \tup{2,1}, \tup{5,1}\}\\
+& {\cal B} = \{\tup{1,1}, \tup{2,1}, \tup{3,1}\}\\
+{\cal A} \mathbf{O} {\cal B} &= \{\tup{1,3}, \tup{2,2}\} = \{1,1,1,2,2\}
+\end{align*}
+
+The example above may not be 100\% rigorous as we liberally switch between multiset and ordered pair representations, but the explanation still expresses the quantity we defined.  This metric is extremely useful when determining the amount of redundancy in a virtual machine as it quantifies the number of pages that are present across all VMs.
+
+It should be noted than since many zero pages exist and compression techniques could be used to avoid sending these pages altogether\cite{live_adaptive_compress}, we define another metric $S_z$:
+\begin{equation}
+S_z = \frac{S-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
+\end{equation}
+where $N_z$ is the total number of zero pages in all VMs:
+\begin{equation}
+N_z = \sum\limits_{i=1,Z\subseteq P_i}|P_i\mathbf{O}Z|-1.
+\end{equation}\label{eqn:sz}
+In the equation above, $Z$ is the zero page and the $-1$ balances out the extra count we get from the $Z$ on the right-hand-side of $\mathbf{O}$.
 
 \section{Optimistic Upper Bounds}
-Before we proceed with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations.
+Before proceeding with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations.  When asking the question
+``is it even worth it?'' we wanted to run a test against very simple use cases to ensure that we should even continue with the project.  To do this, we used an Openstack cloud to generate multiple virtual machines and test their
+
 
 %Here, we compare two basic cases. On the left, we have one cloud image that is instantiated multiple times. On the right, we test VMs of different operating systems against each other. The half above the diagonal does not include zero pages and the lower half includes zero pages. As can be expected, not much redundancy exists across different OS versions (though this may change with real applications). All VMs have 1GB of memory.
 
