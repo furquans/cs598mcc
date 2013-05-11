@@ -93,7 +93,7 @@ Virtualization technology is ubiquitous in most of today's datacenters and is an
 \section{Introduction}
 Virtualization has become one of the most important technologies in today's era. It plays a crucial role in many distributed systems and services. It also forms the fundamental block in cloud computing solutions, such as Amazon EC2 \cite{ec2} and Windows Azure\cite{azure}. The reason that virtualization is widely used in such systems is that it makes better utilization of resources and reduces the cost by allowing multiple operating systems to run concurrently on the same physical infrastructure. Multiple operating systems running in their own virtual machines share the hardware resources, while ensuring high availability for the user applications \cite{virt_app}.
 \par
-\begin{figure}[htbp]
+\begin{figure}[ht]
 \centering
         \includegraphics[height=4cm,width=9cm]{live_migration.png}
     \caption{Live Migration}
@@ -101,12 +101,12 @@ Virtualization has become one of the most important technologies in today's era.
 \end{figure}
 \indent With the increase in size of VM farms, scalability and manageability become a major concern. In order to solve these problems, live migration of a VM was  designed as a powerful tool. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration} \cite{live_migration}.
 \par
-\begin{figure}
+\begin{figure*}[ht]
 \centering
-        \includegraphics[height=8cm,width=9cm]{gang_migration.jpg}
+        \includegraphics[height=8cm,width=18cm]{gang_migration.jpg}
     \caption{Live Gang Migration}
     \label{fig:gang_migration}
-\end{figure}
+\end{figure*}
 However, it is generally observed that a group of multiple VMs co-ordinate with each other in order to provide services to clients. For example, in a Map-Reduce kind of workload, the mappers and reducers are spread over a set of different VMs and all these jobs co-ordinate with each other to accomplish the goal of the user. Also, in web-server kind of environments, the web-server, database server and other servers are spread over a set of VMs in order to provide service to client requests. Thus, in order to ensure maximum performance and lower downtime for processing client requests, it is necessary to perform gang live migration of all co-ordinating VMs rather than a single live migration of individual VMs. The concept of gang live migration is shown in Figure \ref{fig:gang_migration}.
 \par
 Though live migration proves to be a powerful tool in increasing the manageability of the VM farms, it comes at the cost of increased network traffic. One solution to reduce this traffic is to exploit the redundancy of data across virtual machines by migrating groups of similar virtual machines. Theoretically, there exists redundant memory content across VMs in the form of kernel code, kernel static data, application libraries as well as application binaries. However, in order to ensure that the whole process of exploiting redundancy for gang live migration is worthwhile, we need to first understand the nature of this redundancy.
@@ -188,7 +188,33 @@ Before we proceed with applied use cases, we decided to get an upper bound for r
 Folding at home, surprising that it was stable until...
 
 \section{Client-Server}
+This section describes the details of the experiments performed using a client-server kind of architecture in order to identify the level of redundancy that can be exploited during live migration. We have chosen client-server kind of use case because it well suits the model of servers deployed over a set of VMs interacting with each other to service client requests.
 
+\subsection{Experimental Setup}
+The entire group of client-server machines was realized using a set of five VMs running Ubuntu 12.04. One VM hosted the server machine, whereas the other 4 VMs hosted the client machines. In order to generate different streams of traffic, we used the standard tool Ostinato \cite{ostinato}.
+
+The tool Ostinato has two components: First component is ostinato, which runs on the server machine and allows the server to control various ports at the server side as well as on the client side. Second component is drone, which runs on the client machines and interacts with the ostinato component on server to control different traffic streams on the client side. We used ostinato to generate random TCP traffic streams from the server to each of the clients. The data packets generated for these traffic streams were created in a completely random fashion. Also, we initiated random UDP traffic streams from each of the client machines to the server machine. Again, the data packets generated for these traffic streams were created in a completely random fashion. Overall, there were two traffic streams live at any given moment between each client-server pair(TCP downstream, UDP upstream).
+
+\subsection{Results and Analysis}
+We used the redundancy evaluation architecture to capture redundancy results along two dimensions. One is by varying the number of clients from one to four and other is by capturing the system redundancy numbers at different time instances.
+
+\begin{figure}[htbp]
+\centering
+        \includegraphics[width=8cm]{client-server1.png}
+    \caption{Duplicate memory with varying number of clients}
+    \label{fig:client-server1}
+\end{figure}
+
+Figure \ref{fig:client-server1} presents the results of redundancy evaluation captured by varying the number of clients from one to four. Thus, the total number of VMs involved in the redundancy calculation varies from two to five. As can be seen from the above figure, the number of duplicate pages including the zero pages in the entire system is around $30$\% - $55$\%.	However, since this number includes the zero page count as well, it does not present a true indication of redundancy. Zero pages can generally be handled in a special way using compression during the process of live migration. Hence, in order to identify true redundancy, we calcuated the amount of duplicated memory without zero pages. Using these metrics, it can be seen from the figure that the amount of redundancy across the system is at least $10$\%. As mentioned in the experimental setup, the data streams between the server and the clients were made up of completely random data. Hence, the numbers that we see for redundancy are purely the lower bound on the amount of duplicate memory that can be found in a client-server architecture. With servers and clients sharing more of computational data, the amount of redundancy should go on increasing.
+
+\begin{figure}[htbp]
+\centering
+        \includegraphics[width=8cm]{client-server2.png}
+    \caption{Duplicate memory within the system at different time instances}
+    \label{fig:client-server2}
+\end{figure}
+
+Figure \ref{fig:client-server2} present the results of redundancy evaluation captured for a system with five VMs(four clients and one server) at time instances of 30 minutes apart. As can be seen from the figure, the values for redundancy across the system at different time instances remains almost the same for duplicate memory with and without zero pages under consideration. Two conclusions can be derived from this behavior. One is that the system preferred using hot cache pages more than allocating new pages for assembling packets in memory. Hence, the total number of duplicate pages including zero pages remains almost the same. Second is that the amount of duplicate memory without zero pages remains almost the same and is at least $10$\%. This verifies our initial assumption that this number forms the lower bound on the amount of redudancy that can be exploited with completely random data running across the VMs. As the application level commonality increases in the form of data and/or code, the amount of overall system redundancy that can be exploited also increases.
 \section{Hadoop}
 
 \section{Stability Over Time}
