@@ -206,11 +206,17 @@ Figure \ref{fig:diff_var} presents using different color codes the similarity be
 
 As can be seen from the figure, two different instances of the same operating system shows high similarity, nearly $30$\% to $54$\%. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to $10$\% to $20$\%. There are the base case values that we would see with similarity only within the kernel code, since the values are captured immediately after bootup. With increase in commonality across different operating systems, this number should go on increasing.
 
-%Here, we compare two basic cases. On the left, we have one cloud image that is instantiated multiple times. On the right, we test VMs of different operating systems against each other. The half above the diagonal does not include zero pages and the lower half includes zero pages. As can be expected, not much redundancy exists across different OS versions (though this may change with real applications). All VMs have 1GB of memory.
-
-
 \section{Stability Over Time}
-Folding at home, surprising that it was stable until...
+This section presents a detailed report of the experiments performed to evaluate the stability of various systems over a period of time. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and folding at home.
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/vm_vs_time.png}
+  \caption{VM image changes over time}\label{fig:vm_vs_time}
+\end{figure}
+
+Figure \ref{fig:vm_vs_time} presents the redundancy comparison of the different types of VMs discussed above over time. As can be seen from the figure, the redundancy factor within a VM seems to converge to some constant value after a certain period of time. However, the stability point that is reached by the VM varies both in time as well as in the redundancy space. Thus, within the VMs, the system memory is not constant. It keeps changing continuously. Hence, over time the trend-line shows a gradually downward progression. But, this behavior cannot be modeled using a common equation for different kinds of VMs. For example, in the lightly loaded TCP client, there are multiple points of stability and steep drop as well. On the other hand, for an idle desktop, the drop is rather gradual. Hence, depending upon the kind of applications running on the system, the overall stability changes in different ways.
 
 \section{Client-Server}
 This section describes the details of the experiments performed using a client-server kind of architecture in order to identify the level of redundancy that can be exploited during live migration. We have chosen client-server kind of use case because it well suits the model of servers deployed over a set of VMs interacting with each other to service client requests.
