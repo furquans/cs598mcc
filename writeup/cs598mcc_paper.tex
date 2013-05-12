@@ -99,7 +99,7 @@ Virtualization has become one of the most important technologies in today's era.
     \caption{Live Migration}
     \label{fig:live_migration}
 \end{figure}
-\indent With the increase in size of VM farms, scalability and manageability become a major concern. In order to solve these problems, live migration of a VM was  designed as a powerful tool. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration} \cite{live_migration}.
+\indent With the increase in size of VM farms, scalability and manageability become a major concern. In order to solve these problems, live migration of a VM was  designed as a powerful tool. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration}.
 \par
 \begin{figure*}[ht]
 \centering
@@ -222,7 +222,7 @@ Figure \ref{fig:vm_vs_time} presents the redundancy comparison of the different 
 This section describes the details of the experiments performed using a client-server kind of architecture in order to identify the level of redundancy that can be exploited during live migration. We have chosen client-server kind of use case because it well suits the model of servers deployed over a set of VMs interacting with each other to service client requests.
 
 \subsection{Experimental Setup}
-The entire group of client-server machines was realized using a set of five VMs running Ubuntu 12.04. One VM hosted the server machine, whereas the other 4 VMs hosted the client machines. In order to generate different streams of traffic, we used the standard tool Ostinato \cite{ostinato}.
+The entire group of client-server machines was realized using a set of five VMs running Ubuntu 12.04. One VM hosted the server machine, whereas the other 4 VMs hosted the client machines. In order to generate different streams of traffic, we used the standard tool Ostinato.
 
 The tool Ostinato has two components: First component is ostinato, which runs on the server machine and allows the server to control various ports at the server side as well as on the client side. Second component is drone, which runs on the client machines and interacts with the ostinato component on server to control different traffic streams on the client side. We used ostinato to generate random TCP traffic streams from the server to each of the clients. The data packets generated for these traffic streams were created in a completely random fashion. Also, we initiated random UDP traffic streams from each of the client machines to the server machine. Again, the data packets generated for these traffic streams were created in a completely random fashion. Overall, there were two traffic streams live at any given moment between each client-server pair(TCP downstream, UDP upstream).
 
