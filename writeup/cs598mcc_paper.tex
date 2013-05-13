@@ -202,16 +202,16 @@ This section describes the second set of experiments performed to obtain base ca
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.4\textwidth]{images/diff_var.png}
-  \caption{Redundancy across different variants of Linux}\label{fig:diff_var}
+  \includegraphics[width=0.4\textwidth]{images/diff-var.pdf}
+  \caption{Redundancy across different variants of Linux.  Values above the diagonal are calculated by $S_z$ and below the diagonal using $S$. The diagonal elements were calculated using $S_z$ with different instances.}\label{fig:diff_var}
 \end{figure}
 
-Figure \ref{fig:diff_var} presents using different color codes the similarity between different variants of Linux operating system. The diagonal represents the similarity between two instances of the same operating system. The blocks below the diagonal represent the redundancy across different variants including the zero pages i.e. the value for $S$ in Equation \ref{eqn:s}. On the other hand, the blocks above the diagonal, represent the redundancy not including the zero pages i.e. the value for $S_z$ in Equation \ref{eqn:sz}.
+Figure \ref{fig:diff_var} presents a color map of a matrix representation of the similarity between different variants of Linux operating system. The diagonal represents the similarity between two different instances of the same operating system, calculated using $S_z$. The elements below the diagonal represent the redundancy across different variants including the zero pages i.e. the value for $S$ calculated by Equation \ref{eqn:s}. On the other hand, the elements above the diagonal represent the redundancy not including the zero pages i.e. the value for $S_z$ from Equation \ref{eqn:sz}.
 
-As can be seen from the figure, two different instances of the same operating system show high similarity, nearly $30$\% to $54$\%. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to $10$\% to $20$\%. These are the base case values that we would see with similarity only within the kernel code, since the values are captured immediately after bootup. With increase in commonality across different operating systems, this number should go on increasing. Thus, we speculate that the total amount of redundancy across different variants of operating systems at any time during their execution lifetime should be between the ranges of $10-20$\% and $18-48$\%. These two ranges bound the expected gains possible out of exploiting redundancy across different VMs. This variation in commonality exists depending upon the application code, libraries and other static data that presents possible opportunities for redundancy.
+As can be seen from the figure, two different instances of the same operating system show high similarity, nearly $30$\% to $54$\% and mirroring Figure \ref{fig:multiple_restarts}. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to 10\% or lower.  It was shocking that for example CentOS and Scientific Linux, also differing only in minor version would have a rather lower similarity (especially considering they are both based on the same Upstream Vendor).  These two ranges bound the expected gains possible out of exploiting redundancy across different VMs.  Obviously, the real similarity would depend strongly upon the application code, libraries and other static data. 
 
 \section{Stability Over Time}
-This section presents a detailed report of the experiments performed to evaluate the stability of various systems over a period of time. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and folding at home.
+This section presents a detailed report of the experiments performed to evaluate the stability (here defined as \textit{how much the system image changes over time} of various systems over a period of time. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and folding at home.
 
 
 \begin{figure}
