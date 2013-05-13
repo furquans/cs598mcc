@@ -96,19 +96,19 @@ Virtualization has become one of the most important technologies in today's era.
 \par
 \begin{figure}[ht]
 \centering
-        \includegraphics[height=4cm,width=9cm]{live_migration.png}
+        \includegraphics[height=4cm,width=9cm]{images/live_migration.png}
     \caption{Live Migration}
     \label{fig:live_migration}
 \end{figure}
-\indent With the increase in size of VM farms, scalability and manageability become a major concern. In order to solve these problems, live migration of a VM was  designed as a powerful tool. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration} \cite{live_migration}.
+\indent With the increase in size of VM farms, scalability and manageability become a major concern. In order to solve these problems, live migration of a VM was  designed as a powerful tool. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration}.
 \par
 \begin{figure*}[ht]
 \centering
-        \includegraphics[height=8cm,width=18cm]{gang_migration.jpg}
+        \includegraphics[height=8cm,width=18cm]{images/gang_migration.jpg}
     \caption{Live Gang Migration}
     \label{fig:gang_migration}
 \end{figure*}
-However, it is generally observed that a group of multiple VMs co-ordinate with each other in order to provide services to clients. For example, in a Map-Reduce kind of workload, the mappers and reducers are spread over a set of different VMs and all these jobs co-ordinate with each other to accomplish the goal of the user. Also, in web-server kind of environments, the web-server, database server and other servers are spread over a set of VMs in order to provide service to client requests. Thus, in order to ensure maximum performance and lower downtime for processing client requests, it is necessary to perform gang live migration of all co-ordinating VMs rather than a single live migration of individual VMs. The concept of gang live migration is shown in Figure \ref{fig:gang_migration}.
+However, it is generally observed that a group of multiple VMs co-ordinate with each other in order to provide services to clients. For example, in a Map-Reduce kind of workload, the mappers and reducers are spread over a set of different VMs and all these jobs co-ordinate with each other to accomplish the goal of the user. Also, in web-server kind of environments, the web-server, database server and other servers are spread over a set of VMs in order to provide service to client requests. Thus, in order to ensure maximum performance and lower downtime for processing client requests, it is necessary to perform gang live migration of all co-ordinating VMs rather than a single live migration of individual VMs. The concept of gang live migration is shown in Figure \ref{fig:gang_migration} \cite{live_gang}.
 \par
 Though live migration proves to be a powerful tool in increasing the manageability of the VM farms, it comes at the cost of increased network traffic. One solution to reduce this traffic is to exploit the redundancy of data across virtual machines by migrating groups of similar virtual machines. Theoretically, there exists redundant memory content across VMs in the form of kernel code, kernel static data, application libraries as well as application binaries. However, in order to ensure that the whole process of exploiting redundancy for gang live migration is worthwhile, we need to first understand the nature of this redundancy.
 \par
@@ -118,9 +118,9 @@ This project aims at investigating deeper into different practical use cases and
 \section{Redundancy Evaluation Architecture}\label{sec:redundancy}
 
 \subsection{Mathematical Definition for Redundancy}\label{sec:red_math}
-In this section, we intend to give a succinct definition for what is mean by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
+In this section, we intend to give a succinct definition for what is meant by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
 \begin{equation}
-S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|}{\sum\limits_{i=1}^{N}|P_i|}
+S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N)|}{\sum\limits_{i=1}^{N}|P_i|}
 \end{equation}\label{eqn:s}
 where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as a sort of `intersection' of two multisets that will be clarified momentarily.  
 
@@ -146,7 +146,7 @@ The example above may not be 100\% rigorous as we liberally switch between multi
 
 It should be noted than since many zero pages exist and compression techniques could be used to avoid sending these pages altogether\cite{live_adaptive_compress}, we define another metric $S_z$:
 \begin{equation}
-S_z = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
+S_z = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N)|-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
 \end{equation}
 where $N_z$ is the total number of zero pages in all VMs:
 \begin{equation}
@@ -183,7 +183,7 @@ Clearly, most of these steps can be automated via simple shell scripting for sem
 Before we proceed with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations. This step is very important for moving ahead with the overall redundancy study because it establishes the maximum possible benefits that can be gained out of exploiting redundancy for group live migration. If the maximum value falls below the acceptable threshold, it is not worthwhile investing in sophisticated mechanisms for improving the group migration. This section describes two basic methods for establishing the optimistic upper bounds for the redundancy study.
 
 \subsection{Same VM image across multiple instances}
-This section describes the first basic method used to establish the optimistic upper bound. In this method, we used the same disk image to boot multiple cloud instances. In order to perform redundancy evaluation, every cloud instance was booted up using the common disk image followed by a snapshot of the physical memory of the VM at the end of system bootup. In this way, a total of 40VM instances were booted from the common disk image and snapshots were captured for each of the VM instances. All these snapshots were used to calculate the hash values of the entire physical memory of the VM.
+This section describes the first basic method used to establish the optimistic upper bound. In this method, we used the same disk image to boot multiple cloud instances. In order to perform redundancy evaluation, every cloud instance was booted up using the common disk image followed by a snapshot of the physical memory of the VM at the end of system bootup. In this way, a total of 40VM instances were booted from the common disk image and snapshots were captured for each of the VM instances. All these snapshots were used to calculate the hash values of the entire physical memory of the VM as described in the previous section.
 
 \begin{figure}
   \centering
@@ -191,7 +191,7 @@ This section describes the first basic method used to establish the optimistic u
   \caption{Redundancy across multiple restarts of VMs from same image}\label{fig:multiple_restarts}
 \end{figure}
 
-Figure \ref{fig:multiple_restarts} presents the redundancy across the different VM instances. As can be seen from the figure, the amount of redundancy across different VMs including the zero pages is nearly equal to $100$\%. However, the inclusion of zero pages biases the redundancy calculation since special mechanisms like zero page compression can be used to optimize the live migration. Hence, we present two different metrics for redundancy calculation: One is the amount of duplicate memory without zero pages and other is the percentage of non-zero duplicate memory over the entire physical memory. The normalized value for non-zero duplicate memory gives the real value for optimistic upper bound on the amount of redundancy that can be achieved in the best possible case. It is clearly evident from the figure that $40$\% redundancy is the best case value for system using a common disk image to spawn multiple VMs. 
+Figure \ref{fig:multiple_restarts} presents the redundancy across the different VM instances. As can be seen from the figure, the amount of redundancy across different VMs including the zero pages is nearly equal to $100$\%. However, the inclusion of zero pages biases the redundancy calculation since special mechanisms like zero page compression can be used to optimize the live migration. Hence, we present two different metrics for redundancy calculation as explained in the previous section: $S$ and $S_{z}$ The normalized value for non-zero duplicate memory gives the real value for optimistic upper bound on the amount of redundancy that can be achieved in the best possible case. It is clearly evident from the figure that $40$\% redundancy is the best case value for system using a common disk image to spawn multiple VMs. Though there is a steep decrease in the amount of redundacy during the initial VM images, the value for the upper bound seems to saturate around $40$\%.	
 
 
 \subsection{Comparison of different variants of Linux on bootup}
@@ -203,21 +203,27 @@ This section describes the second set of experiments performed to obtain base ca
   \caption{Redundancy across different variants of Linux}\label{fig:diff_var}
 \end{figure}
 
-Figure \ref{fig:diff_var} presents using different color codes the similarity between different variants of Linux operating system. The diagonal represents the similarity between two instances of the same operating system. The blocks below the diagonal represent the redundancy across different variants including the zero pages. On the other hand, the blocks above the diagonal, represent the redundancy not including the zero pages.
+Figure \ref{fig:diff_var} presents using different color codes the similarity between different variants of Linux operating system. The diagonal represents the similarity between two instances of the same operating system. The blocks below the diagonal represent the redundancy across different variants including the zero pages i.e. the value for $S$ in Equation \ref{eqn:s}. On the other hand, the blocks above the diagonal, represent the redundancy not including the zero pages i.e. the value for $S_z$ in Equation \ref{eqn:sz}.
 
-As can be seen from the figure, two different instances of the same operating system shows high similarity, nearly $30$\% to $54$\%. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to $10$\% to $20$\%. There are the base case values that we would see with similarity only within the kernel code, since the values are captured immediately after bootup. With increase in commonality across different operating systems, this number should go on increasing.
-
-%Here, we compare two basic cases. On the left, we have one cloud image that is instantiated multiple times. On the right, we test VMs of different operating systems against each other. The half above the diagonal does not include zero pages and the lower half includes zero pages. As can be expected, not much redundancy exists across different OS versions (though this may change with real applications). All VMs have 1GB of memory.
-
+As can be seen from the figure, two different instances of the same operating system show high similarity, nearly $30$\% to $54$\%. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to $10$\% to $20$\%. These are the base case values that we would see with similarity only within the kernel code, since the values are captured immediately after bootup. With increase in commonality across different operating systems, this number should go on increasing. Thus, we speculate that the total amount of redundancy across different variants of operating systems at any time during their execution lifetime should be between the ranges of $10-20$\% and $18-48$\%. These two ranges bound the expected gains possible out of exploiting redundancy across different VMs. This variation in commonality exists depending upon the application code, libraries and other static data that presents possible opportunities for redundancy.
 
 \section{Stability Over Time}
-Folding at home, surprising that it was stable until...
+This section presents a detailed report of the experiments performed to evaluate the stability of various systems over a period of time. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and folding at home.
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.4\textwidth]{images/vm_vs_time.png}
+  \caption{VM image changes over time}\label{fig:vm_vs_time}
+\end{figure}
+
+Figure \ref{fig:vm_vs_time} presents the redundancy comparison of the different types of VMs discussed above over time. As can be seen from the figure, the redundancy factor within a VM seems to converge to some constant value after a certain period of time. However, the stability point that is reached by the VM varies both in time as well as in the redundancy space. Thus, within the VMs, the system memory is not constant. It keeps changing continuously. Hence, over time the trend-line shows a gradually downward progression. But, this behavior cannot be modeled using a common equation for different kinds of VMs. For example, in the lightly loaded TCP client, there are multiple points of stability and steep drop as well. On the other hand, for an idle desktop, the drop is rather gradual. Hence, depending upon the kind of applications running on the system, the overall stability changes in different ways.
 
 \section{Client-Server}
 This section describes the details of the experiments performed using a client-server kind of architecture in order to identify the level of redundancy that can be exploited during live migration. We have chosen client-server kind of use case because it well suits the model of servers deployed over a set of VMs interacting with each other to service client requests.
 
 \subsection{Experimental Setup}
-The entire group of client-server machines was realized using a set of five VMs running Ubuntu 12.04. One VM hosted the server machine, whereas the other 4 VMs hosted the client machines. In order to generate different streams of traffic, we used the standard tool Ostinato \cite{ostinato}.
+The entire group of client-server machines was realized using a set of five VMs running Ubuntu 12.04. One VM hosted the server machine, whereas the other 4 VMs hosted the client machines. In order to generate different streams of traffic, we used the standard tool Ostinato.
 
 The tool Ostinato has two components: First component is ostinato, which runs on the server machine and allows the server to control various ports at the server side as well as on the client side. Second component is drone, which runs on the client machines and interacts with the ostinato component on server to control different traffic streams on the client side. We used ostinato to generate random TCP traffic streams from the server to each of the clients. The data packets generated for these traffic streams were created in a completely random fashion. Also, we initiated random UDP traffic streams from each of the client machines to the server machine. Again, the data packets generated for these traffic streams were created in a completely random fashion. Overall, there were two traffic streams live at any given moment between each client-server pair(TCP downstream, UDP upstream).
 
@@ -226,7 +232,7 @@ We used the redundancy evaluation architecture to capture redundancy results alo
 
 \begin{figure}[htbp]
 \centering
-        \includegraphics[width=0.4\textwidth]{client-server1.png}
+        \includegraphics[width=0.4\textwidth]{images/client-server1.png}
     \caption{Duplicate memory with varying number of clients}
     \label{fig:client-server1}
 \end{figure}
@@ -235,7 +241,7 @@ Figure \ref{fig:client-server1} presents the results of redundancy evaluation ca
 
 \begin{figure}[htbp]
 \centering
-        \includegraphics[width=8cm]{client-server2.png}
+        \includegraphics[width=8cm]{images/client-server2.png}
     \caption{Duplicate memory within the system at different time instances}
     \label{fig:client-server2}
 \end{figure}
