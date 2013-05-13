@@ -117,9 +117,9 @@ This project aims at investigating deeper into different practical use cases and
 \section{Redundancy Evaluation Architecture}\label{sec:redundancy}
 
 \subsection{Mathematical Definition for Redundancy}\label{sec:red_math}
-In this section, we intend to give a succinct definition for what is mean by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
+In this section, we intend to give a succinct definition for what is meant by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
 \begin{equation}
-S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|}{\sum\limits_{i=1}^{N}|P_i|}
+S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N)|}{\sum\limits_{i=1}^{N}|P_i|}
 \end{equation}\label{eqn:s}
 where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as a sort of `intersection' of two multisets that will be clarified momentarily.  
 
@@ -145,7 +145,7 @@ The example above may not be 100\% rigorous as we liberally switch between multi
 
 It should be noted than since many zero pages exist and compression techniques could be used to avoid sending these pages altogether\cite{live_adaptive_compress}, we define another metric $S_z$:
 \begin{equation}
-S_z = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N|-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
+S_z = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N)|-N_z}{\sum\limits_{i=1}^{N}|P_i|-N_z}
 \end{equation}
 where $N_z$ is the total number of zero pages in all VMs:
 \begin{equation}
@@ -182,7 +182,7 @@ Clearly, most of these steps can be automated via simple shell scripting for sem
 Before we proceed with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations. This step is very important for moving ahead with the overall redundancy study because it establishes the maximum possible benefits that can be gained out of exploiting redundancy for group live migration. If the maximum value falls below the acceptable threshold, it is not worthwhile investing in sophisticated mechanisms for improving the group migration. This section describes two basic methods for establishing the optimistic upper bounds for the redundancy study.
 
 \subsection{Same VM image across multiple instances}
-This section describes the first basic method used to establish the optimistic upper bound. In this method, we used the same disk image to boot multiple cloud instances. In order to perform redundancy evaluation, every cloud instance was booted up using the common disk image followed by a snapshot of the physical memory of the VM at the end of system bootup. In this way, a total of 40VM instances were booted from the common disk image and snapshots were captured for each of the VM instances. All these snapshots were used to calculate the hash values of the entire physical memory of the VM.
+This section describes the first basic method used to establish the optimistic upper bound. In this method, we used the same disk image to boot multiple cloud instances. In order to perform redundancy evaluation, every cloud instance was booted up using the common disk image followed by a snapshot of the physical memory of the VM at the end of system bootup. In this way, a total of 40VM instances were booted from the common disk image and snapshots were captured for each of the VM instances. All these snapshots were used to calculate the hash values of the entire physical memory of the VM as described in the previous section.
 
 \begin{figure}
   \centering
@@ -190,7 +190,7 @@ This section describes the first basic method used to establish the optimistic u
   \caption{Redundancy across multiple restarts of VMs from same image}\label{fig:multiple_restarts}
 \end{figure}
 
-Figure \ref{fig:multiple_restarts} presents the redundancy across the different VM instances. As can be seen from the figure, the amount of redundancy across different VMs including the zero pages is nearly equal to $100$\%. However, the inclusion of zero pages biases the redundancy calculation since special mechanisms like zero page compression can be used to optimize the live migration. Hence, we present two different metrics for redundancy calculation: One is the amount of duplicate memory without zero pages and other is the percentage of non-zero duplicate memory over the entire physical memory. The normalized value for non-zero duplicate memory gives the real value for optimistic upper bound on the amount of redundancy that can be achieved in the best possible case. It is clearly evident from the figure that $40$\% redundancy is the best case value for system using a common disk image to spawn multiple VMs. 
+Figure \ref{fig:multiple_restarts} presents the redundancy across the different VM instances. As can be seen from the figure, the amount of redundancy across different VMs including the zero pages is nearly equal to $100$\%. However, the inclusion of zero pages biases the redundancy calculation since special mechanisms like zero page compression can be used to optimize the live migration. Hence, we present two different metrics for redundancy calculation as explained in the previous section: $S$ and $S_{z}$ The normalized value for non-zero duplicate memory gives the real value for optimistic upper bound on the amount of redundancy that can be achieved in the best possible case. It is clearly evident from the figure that $40$\% redundancy is the best case value for system using a common disk image to spawn multiple VMs. Though there is a steep decrease in the amount of redundacy during the initial VM images, the value for the upper bound seems to saturate around $40$\%.	
 
 
 \subsection{Comparison of different variants of Linux on bootup}
@@ -202,9 +202,9 @@ This section describes the second set of experiments performed to obtain base ca
   \caption{Redundancy across different variants of Linux}\label{fig:diff_var}
 \end{figure}
 
-Figure \ref{fig:diff_var} presents using different color codes the similarity between different variants of Linux operating system. The diagonal represents the similarity between two instances of the same operating system. The blocks below the diagonal represent the redundancy across different variants including the zero pages. On the other hand, the blocks above the diagonal, represent the redundancy not including the zero pages.
+Figure \ref{fig:diff_var} presents using different color codes the similarity between different variants of Linux operating system. The diagonal represents the similarity between two instances of the same operating system. The blocks below the diagonal represent the redundancy across different variants including the zero pages i.e. the value for $S$ in Equation \ref{eqn:s}. On the other hand, the blocks above the diagonal, represent the redundancy not including the zero pages i.e. the value for $S_z$ in Equation \ref{eqn:sz}.
 
-As can be seen from the figure, two different instances of the same operating system shows high similarity, nearly $30$\% to $54$\%. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to $10$\% to $20$\%. There are the base case values that we would see with similarity only within the kernel code, since the values are captured immediately after bootup. With increase in commonality across different operating systems, this number should go on increasing.
+As can be seen from the figure, two different instances of the same operating system show high similarity, nearly $30$\% to $54$\%. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to $10$\% to $20$\%. These are the base case values that we would see with similarity only within the kernel code, since the values are captured immediately after bootup. With increase in commonality across different operating systems, this number should go on increasing. Thus, we speculate that the total amount of redundancy across different variants of operating systems at any time during their execution lifetime should be between the ranges of $10-20$\% and $18-48$\%. These two ranges bound the expected gains possible out of exploiting redundancy across different VMs. This variation in commonality exists depending upon the application code, libraries and other static data that presents possible opportunities for redundancy.
 
 \section{Stability Over Time}
 This section presents a detailed report of the experiments performed to evaluate the stability of various systems over a period of time. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and folding at home.
