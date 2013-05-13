@@ -211,18 +211,26 @@ Figure \ref{fig:diff_var} presents a color map of a matrix representation of the
 As can be seen from the figure, two different instances of the same operating system show high similarity, nearly $30$\% to $54$\% and mirroring Figure \ref{fig:multiple_restarts}. The similarity between different variants including zero page count ranges from nearly $18$\% to $48$\%. However, if zero pages are not considered, then the similarity across different operating systems drops down to 10\% or lower.  It was shocking that for example CentOS and Scientific Linux, also differing only in minor version would have a rather lower similarity (especially considering they are both based on the same Upstream Vendor).  These two ranges bound the expected gains possible out of exploiting redundancy across different VMs.  Obviously, the real similarity would depend strongly upon the application code, libraries and other static data. 
 
 \section{Stability Over Time}
-This section presents a detailed report of the experiments performed to evaluate the stability (here defined as \textit{how much the system image changes over time} of various systems over a period of time. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and folding at home.
+This section presents a detailed report of the experiments performed to evaluate the stability (here defined as \textit{how much the system's memory image changes}) of various systems over a finite time period. We used four different systems for our study: an idle desktop system, a lightly loaded traffic server, a heavily loaded TCP client and a scientific computing workload.\footnote{http://folding.stanford.edu}
 
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.4\textwidth]{images/vm_vs_time.png}
-  \caption{VM image changes over time}\label{fig:vm_vs_time}
+  \includegraphics[width=0.4\textwidth]{images/vm_vs_time.pdf}
+  \caption{VM image changes over time, each point is calculated against the first one for each application (e.g. 6 hours on the $x$ axis means the hashes at $t=6$ are compared with the hashes at $t=1$). Samples were taken every 15 minutes. Here, only similarity values not considering zero pages are shown.}\label{fig:vm_vs_time}
 \end{figure}
 
-Figure \ref{fig:vm_vs_time} presents the redundancy comparison of the different types of VMs discussed above over time. As can be seen from the figure, the redundancy factor within a VM seems to converge to some constant value after a certain period of time. However, the stability point that is reached by the VM varies both in time as well as in the redundancy space. Thus, within the VMs, the system memory is not constant. It keeps changing continuously. Hence, over time the trend-line shows a gradually downward progression. But, this behavior cannot be modeled using a common equation for different kinds of VMs. For example, in the lightly loaded TCP client, there are multiple points of stability and steep drop as well. On the other hand, for an idle desktop, the drop is rather gradual. Hence, depending upon the kind of applications running on the system, the overall stability changes in different ways.
+Figure \ref{fig:vm_vs_time} presents the redundancy comparison of different types of VMs over time.  The workloads are:
+\begin{enumerate}
+  \item Folding at Home: distributed computing Molecular Dynamics simulation that is CPU bound
+  \item Idle Desktop: Ubuntu 12.04 desktop left idle
+  \item Light Traffic Server: Real server that serves DNS/puppet for roughly 10 nodes in an Openstack cloud
+  \item TCP Client: Described in Section \ref{sec:client-server}
+\end{enumerate}
 
-\section{Client-Server}
+As can be seen from Figure \ref{fig:vm_vs_time}, the convergence to some constant value after a certain period of time is completely workload dependent (which confirms common sense expectations) and largely absent at longer time scales.  Hence, trend is towards shows a gradually downward progression. Each workload also seems to have a different behavior.  For example, the Folding at Home workload is mostly stable, but has a sharp drop when the work unit finishes and the system has to write the output and download a new dataset (thereby effectively flushing the buffer cache and the work unit loaded in memory).  Even the idle desktop has a rather aggressive negative trend, and we propose calculating this metric could be useful in quantifying OS bloat (i.e. would we get the same trend with something like Slackware Linux?).  The TCP client seems to suffer the same problem as Folding when it comes to an instantaneous (within 15 minute) change of the system's memory.  This data clearly shows that \textit{when} you take a snapshot should be a critical part of migration scheduling.
+
+\section{Client-Server}\label{sec:client-server}
 This section describes the details of the experiments performed using a client-server kind of architecture in order to identify the level of redundancy that can be exploited during live migration. We have chosen client-server kind of use case because it well suits the model of servers deployed over a set of VMs interacting with each other to service client requests.
 
 \subsection{Experimental Setup}
@@ -293,6 +301,7 @@ Some interesting questions that have been raised and need to be addressed:
   \item An actual study of why the same image booted multiple times only contains roughly 40\% redundancy in the large number of VMs limit.  Identification of all this transient state may help to inform the numbers.   
   \item With larger user data sets and system memories, one can expect to gain more redundancy
   \item How can we run this study on production servers? Of particular interest would be webservers and an actual Hadoop cluster
+  \item Unfortunately, while we believe the impact of our measurements to be small, we do snapshot inside the VM and therefore perturb the system.  It may be useful to investigate the tradeoffs between our method and doing calculations at the hypervisor level (for a cookie-cutter cloud provider, modifying the hypervisor would make sense)
 \end{itemize}
 
 Overall, while data is far from conclusive, it seems that the savings obtained may not be worth it.  However, it is important to consider that 30\% of 100GB (for moving a whole cluster) is still 30GB, which can result in some substantial traffic savings (especially if the user is billed on bandwidth).
