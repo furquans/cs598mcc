@@ -83,7 +83,7 @@ Furquan Shaikh
 
 \maketitle
 \begin{abstract}
-Virtualization technology is ubiquitous in most of today's datacenters and is an enabling technology for Infrastructure-as-a-Service Cloud Computing.  As the size of VM farms grows, concerns about the scalability of managing this infrastructure is growing.  Live migration techniques offer large flexibility gains at the cost of increased network traffic.  One solution to reduce this traffic involves exploiting the redundancy of data across virtual machines by migrating groups of similar virtual machines.  For this to be a worthwhile endeavor, we must first understand the nature of this redundancy.  The goal of this study is to investigate some possible use cases and determine the amount of memory redundancy that exists across VMs for these cases.  We develop a platform for evaluating this redundnacy and then utilize it to gain insight into the level of redundancy that can be exploited in these systems.
+Virtualization technology is ubiquitous in most of today's datacenters and is an enabling technology for Infrastructure-as-a-Service Cloud Computing.  As the size of VM farms grows, concerns about the scalability of managing this infrastructure is growing.  Live migration techniques offer large flexibility gains at the cost of increased network traffic.  One solution to reduce this traffic involves exploiting the redundancy of data across virtual machines by migrating groups of similar virtual machines.  For this to be a worthwhile endeavor, we must first understand the nature of this redundancy.  The goal of this study is to investigate some possible use cases and determine the amount of memory redundancy that exists across VMs for these cases.  We develop a platform for evaluating the similarity of VM memory images and then utilize it to gain insight into the level of redundancy that can be exploited in these systems.
 \end{abstract}
 
 % A category with the (minimum) three required fields
@@ -92,28 +92,31 @@ Virtualization technology is ubiquitous in most of today's datacenters and is an
 %\category{D.2.8}{Software Engineering}{Metrics}[complexity measures, performance measures]
 \setlength{\parindent}{0.5cm}
 \section{Introduction}
-Virtualization has become one of the most important technologies in today's era. It plays a crucial role in many distributed systems and services. It also forms the fundamental block in cloud computing solutions, such as Amazon EC2 \cite{ec2} and Windows Azure\cite{azure}. The reason that virtualization is widely used in such systems is that it makes better utilization of resources and reduces the cost by allowing multiple operating systems to run concurrently on the same physical infrastructure. Multiple operating systems running in their own virtual machines share the hardware resources, while ensuring high availability for the user applications \cite{virt_app}.
+Virtualization has become one of the most important technologies today. It plays a crucial role in many distributed systems and services. It also forms the fundamental block of Infrastructure-as-a-Service cloud computing systems, such as Amazon EC2 \cite{ec2} and Windows Azure\cite{azure}. The reason behind virtualization's prevalence in the data center is that it can help Systems Administrators better utilize resources and reduce costs by allowing multiple operating systems to run concurrently on the same physical infrastructure.  Multiple operating systems running in their own virtual machines share hardware resources, while ensuring high availability for the user applications since barring hypervisor failure, there is reduced fate sharing (vs. running multiple applications in the same OS) due to the strong VM isolation enforced by virtualization \cite{virt_app}.
 \par
 \begin{figure}[ht]
 \centering
         \includegraphics[height=4cm,width=9cm]{images/live_migration.png}
-    \caption{Live Migration}
+    \caption{Live Migration - a VM is migrated while being suspended for a minimal amount of time.  The VM's memory is synchronized to the new server.  At a certain point, the source VM is suspended while register state and the last few pages of Memory are transferred.} 
     \label{fig:live_migration}
 \end{figure}
-\indent With the increase in size of VM farms, scalability and manageability become a major concern. In order to solve these problems, live migration of a VM was  designed as a powerful tool. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration}.
+
+With the increase in size of VM farms to thousands of hypervisors (physical servers), scalability and manageability becomes a major concern. In order to solve these problems, live migration of VMs was designed. Live migration allows VMs to be reorganized for improving reachability, fault-tolerance as well as load balancing within VM farms. The basic idea of live migration is depicted in Figure \ref{fig:live_migration}.  While there is the need to suspend the VM to copy over the register state, this downtime is on the order of tens of milliseconds (and likely getting better)\cite{live_migration}.
+
 \par
 \begin{figure*}[ht]
 \centering
         \includegraphics[height=8cm,width=18cm]{images/gang_migration.jpg}
-    \caption{Live Gang Migration}
+    \caption{Live Gang Migration - multiple nodes are migrated in concert. The main purpose of this work is to determine how much redundant memory pages can be exploited to increase the efficiency of this process.}
     \label{fig:gang_migration}
 \end{figure*}
-However, it is generally observed that a group of multiple VMs co-ordinate with each other in order to provide services to clients. For example, in a Map-Reduce kind of workload, the mappers and reducers are spread over a set of different VMs and all these jobs co-ordinate with each other to accomplish the goal of the user. Also, in web-server kind of environments, the web-server, database server and other servers are spread over a set of VMs in order to provide service to client requests. Thus, in order to ensure maximum performance and lower downtime for processing client requests, it is necessary to perform gang live migration of all co-ordinating VMs rather than a single live migration of individual VMs. The concept of gang live migration is shown in Figure \ref{fig:gang_migration} \cite{live_gang}.
-\par
-Though live migration proves to be a powerful tool in increasing the manageability of the VM farms, it comes at the cost of increased network traffic. One solution to reduce this traffic is to exploit the redundancy of data across virtual machines by migrating groups of similar virtual machines. Theoretically, there exists redundant memory content across VMs in the form of kernel code, kernel static data, application libraries as well as application binaries. However, in order to ensure that the whole process of exploiting redundancy for gang live migration is worthwhile, we need to first understand the nature of this redundancy.
-\par
-This project aims at investigating deeper into different practical use cases and determine the amount of memory redundancy that exists across VMs for these cases. The observations and conclusions presented in this paper can be used as a guideline in deciding if it is worthwhile to invest in a distributed solution for exploiting memory redundancy for group live migration.
-\par
+However, it is generally observed that a group of multiple VMs coordinate with each other in order to provide services to clients.  For example, in a Hadoop Map/Reduce kind of workload, the mappers and reducers are spread over a set of different servers and all these jobs coordinate with each other complete a particular computation on behalf of the user. Also, in web-server kinds of environments, the web-server, database server and other servers are spread over a set of VMs in order to service to client requests.  Thus, in order to ensure maximum performance and lower downtime for processing client requests, it can be beneficial to perform gang live migration of groups of machines in a cluster rather than a single live migration of individual VMs. Furthermore, many Service-Level-Agreements (SLAs) restrict maintenance periods and administrators may be required to move large portions of clusters in order to meet SLAs.  The concept of gang live migration is illustrated in Figure \ref{fig:gang_migration} \cite{live_gang}.
+
+
+Though live migration can be a powerful tool in increasing the manageability of VM farms, in the trivial implementation (just migrate multiple machines the same way you migrate one) it comes at the cost of increased network traffic.  One solution to reduce this traffic is to exploit the redundancy of data across virtual machines by migrating groups of similar virtual machines.  Theoretically, there exists redundant memory content across VMs in the form of kernel code, kernel static data, application libraries as well as application binaries and data (e.g. web pages for stateless web servers).  However, in order to ensure that the whole process of exploiting redundancy for gang live migration is worthwhile, we need to first understand the nature of this redundancy.
+
+
+This project aims at first developing an expression for VM memory similarity and then investigating different practical use cases to determine the amount of memory redundancy that exists across VMs in these cases. 
 
 \section{Redundancy Evaluation Architecture}\label{sec:redundancy}
 
@@ -255,7 +258,7 @@ Hadoop is one of the major applications of cloud computing and as a result, ther
 \subsection{Experimental Setup}
 It would be ideal to run an experiment on a  large multi-thousand node Hadoop cluster, but we did not have root access to such a cluster.  For our setup, we used The Vagrant\footnote{http://www.vagrantup.com} and the Cloudera Manager\footnote{http://www.cloudera.com/hadoop} to build and orchestrate a 5 node Map/Reduce cluster.  There were four ``datanodes'' (running Datanode and Tasktracker) and one ``controller'' (running the same thing as the datatnodes with NameNode, JobTracker, and Zookeeper).  For this experiment, each virtual machine was given 2GB of memory to give more realistic datapoints (the Cloudera Manager Map/Reduce setup doesn't even work with 1GB of memory in the default configuration).
 
-For this test to be effective, we needed a benchmark and a sample dataset.  For the benchmark, we used the simplest Map/Reduce application, WordCount (which just counts how many times each word appears in the input).  The data consisted of 2224 ebooks downloaded from Project Gutenberg,\footnote{\url{http://www.gutenberg.org}} which totaled $\sim$ 800GB.
+For this test to be effective, we needed a benchmark and a sample dataset.  For the benchmark, we used the simplest Map/Reduce application, WordCount (which just counts how many times each word appears in the input).  The data consisted of 2224 ebooks downloaded from Project Gutenberg,\footnote{http://www.gutenberg.org} which totaled $\sim$ 800GB.
 
 \subsection{Results and Analysis}\label{sec:hadoop_results}
 The results from a simple trial involving WordCount over the Project Gutenberg books are tabulated in Table \ref{tab:hadoop}.  These are preliminary results and each entry in the table only represents one data point.  Not surprisingly, the cluster on a fresh boot is similar to the Optimistic Upper Bounds presented in Section \ref{sec:optimistic}.  Since the data is from just single runs, we can only estimate the actual values.  Using this viewpoint, we can see that on this cluster (we ran the job several times before taking data to warm up the cache) it seems that approximately 1/3 of the memory is redundant.  However, given that these VMs had 2GB of memory and the operating system (based on Figure \ref{fig:multiple_restarts}) occupies roughly 0.5$\cdot$1024MB=512MB), that means that the actual redundant user data in this specific case is only $\sim$ 164MB.
@@ -289,9 +292,10 @@ Some interesting questions that have been raised and need to be addressed:
 \begin{itemize}
   \item An actual study of why the same image booted multiple times only contains roughly 40\% redundancy in the large number of VMs limit.  Identification of all this transient state may help to inform the numbers.   
   \item With larger user data sets and system memories, one can expect to gain more redundancy
+  \item How can we run this study on production servers? Of particular interest would be webservers and an actual Hadoop cluster
 \end{itemize}
 
-Overall, while data is far from conclusive, it seems that it is not worth it.
+Overall, while data is far from conclusive, it seems that the savings obtained may not be worth it.  However, it is important to consider that 30\% of 100GB (for moving a whole cluster) is still 30GB, which can result in some substantial traffic savings (especially if the user is billed on bandwidth).
 
 
 \bibliographystyle{abbrv}
