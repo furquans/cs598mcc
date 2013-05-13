@@ -121,22 +121,22 @@ This project aims at first developing an expression for VM memory similarity and
 \section{Redundancy Evaluation Architecture}\label{sec:redundancy}
 
 \subsection{Mathematical Definition for Redundancy}\label{sec:red_math}
-In this section, we intend to give a succinct definition for what is meant by memory redundancy across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
+In this section, we intend to give a succinct definition for what is meant by memory redundancy and similarity across Virtual Machines.  In all of our analysis, we define the similarity of N virtual machines' memory as a percentage value S:
 \begin{equation}
 S = \frac{|(P_A \mathbf{O} P_B ... \mathbf{O} P_N)|}{\sum\limits_{i=1}^{N}|P_i|}
 \end{equation}\label{eqn:s}
-where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as a sort of `intersection' of two multisets that will be clarified momentarily.  
+where $P_i$ denotes the multiset of pages for VM $i$ (i.e. each element is the content of a specific page in memory) and we define the operator $\mathbf{O}$ as a sort of `intersection' of two multisets that will be defined and demonstrated momentarily.  
 
 
 
-If we let the multisets of pages be represented as sets of ordered pairs where $\tup{P,n}$ denotes that page $P$ appears $n$ times in the multiset,\footnote{The authors would like to gratefully acknowledge the help of Asaf Karagila in formalizing this definition for the operator $\mathbf{O}$.}
+If we let the multisets of pages be represented as sets of ordered pairs where $\tup{P,n}$ denotes that page $P$ appears $n$ times in the multiset,\footnote{The authors would like to gratefully acknowledge the help of Asaf Karagila in formalizing this definition for the operator $\mathbf{O}$ and the suggestion for using the ordered pair description of a multiset.}
 then we can say:
 \begin{equation}\label{eqn:s}
 A\mathrel{\mathbf{O}}B\equiv\{\tup{x,i+j}\mid\tup{x,i}\in A\land\tup{x,j}\in B\}.
 \end{equation}
-It is easy to see that since $+$ and $\land$ are associative, so is $\mathbf{O}$, and Equation \ref{eqn:s} provides the similarity fraction we wish to obtain.
+It is easy to see that since $+$ and $\land$ are associative, so is $\mathbf{O}$, and Equation \ref{eqn:s} provides the similarity fraction we wish to obtain, independent of the order in which we compute $\mathbf{O}$ across each multiset of pages.
 
-The operator $\mathbf{O}$ is easily illustrated by a simple example rather than formal definition:
+The operator $\mathbf{O}$ is easily illustrated by a simple example that should clarify the above definition:
 
 \begin{align*}
 \textrm{Let } & A = \{1,1,2,5\},~B = \{1,2,3\}\\
@@ -145,7 +145,7 @@ The operator $\mathbf{O}$ is easily illustrated by a simple example rather than 
 {\cal A} \mathbf{O} {\cal B} &= \{\tup{1,3}, \tup{2,2}\} = \{1,1,1,2,2\}
 \end{align*}
 
-The example above may not be 100\% rigorous as we liberally switch between multiset and ordered pair representations, but the explanation still expresses the quantity we defined.  This metric is extremely useful when determining the amount of redundancy in a virtual machine as it quantifies the number of pages that are present across all VMs.
+The example above may not be 100\% rigorous as we liberally switch between multiset and ordered pair representations, but the explanation still expresses the quantity we defined.  This metric is extremely useful when determining the amount of redundancy in a virtual machine as it quantifies the number of pages that are present across all VMs and how often they appear.  If we assume an ideal gang migrator can move each redundant page once across a slow network link, this number gives the amount of savings that can be expected.
 
 It should be noted than since many zero pages exist and compression techniques could be used to avoid sending these pages altogether\cite{live_adaptive_compress}, we define another metric $S_z$:
 \begin{equation}
@@ -183,22 +183,22 @@ Clearly, most of these steps can be automated via simple shell scripting for sem
 \end{figure}
 
 \section{Optimistic Upper Bounds}\label{sec:optimistic}
-Before we proceed with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations. This step is very important for moving ahead with the overall redundancy study because it establishes the maximum possible benefits that can be gained out of exploiting redundancy for group live migration. If the maximum value falls below the acceptable threshold, it is not worthwhile investing in sophisticated mechanisms for improving the group migration. This section describes two basic methods for establishing the optimistic upper bounds for the redundancy study.
+Before we proceed with applied use cases, we decided to get an upper bound for redundancy by testing a subset of ``ideal'' situations.  This step is very important for moving ahead with the overall redundancy study because it establishes the maximum possible benefits that can be gained out of exploiting redundancy for gang migration. If the maximum value falls below some acceptable threshold, it is not worthwhile investing in sophisticated mechanisms for improving group migration. This section describes two basic methods for establishing the optimistic upper bounds for the redundancy study.  We do not address what is an acceptable threshold as that usually is expressed in the form of an implementation specific cost function.
 
 \subsection{Same VM image across multiple instances}
-This section describes the first basic method used to establish the optimistic upper bound. In this method, we used the same disk image to boot multiple cloud instances. In order to perform redundancy evaluation, every cloud instance was booted up using the common disk image followed by a snapshot of the physical memory of the VM at the end of system bootup. In this way, a total of 40VM instances were booted from the common disk image and snapshots were captured for each of the VM instances. All these snapshots were used to calculate the hash values of the entire physical memory of the VM as described in the previous section.
+This section describes the first basic method used to establish an optimistic upper bound.  In this method, we used the same disk image to boot multiple cloud instances (using a custom Openstack\footnote{http://www.openstack.org} cloud). In order to perform redundancy evaluation, every cloud instance was booted up using a common disk image followed by a hashed snapshot of the physical pages of the VM when the system completed booting. A total of 40VM instances were booted from a common disk image and hashes were captured for each VM instance.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.4\textwidth]{images/samevm_multiplerestarts.png}
-  \caption{Redundancy across multiple restarts of VMs from same image}\label{fig:multiple_restarts}
+  \includegraphics[width=0.4\textwidth]{images/samevm_multiplerestarts.pdf}
+  \caption{Redundancy across multiple restarts of VMs from same image.  The calculations are cumulative, i.e. 40VMs means we calculated $S$ (blue line) and $S_z$ (green line) across all 40 hashed snapshots.}\label{fig:multiple_restarts}
 \end{figure}
 
-Figure \ref{fig:multiple_restarts} presents the redundancy across the different VM instances. As can be seen from the figure, the amount of redundancy across different VMs including the zero pages is nearly equal to $100$\%. However, the inclusion of zero pages biases the redundancy calculation since special mechanisms like zero page compression can be used to optimize the live migration. Hence, we present two different metrics for redundancy calculation as explained in the previous section: $S$ and $S_{z}$ The normalized value for non-zero duplicate memory gives the real value for optimistic upper bound on the amount of redundancy that can be achieved in the best possible case. It is clearly evident from the figure that $40$\% redundancy is the best case value for system using a common disk image to spawn multiple VMs. Though there is a steep decrease in the amount of redundacy during the initial VM images, the value for the upper bound seems to saturate around $40$\%.	
+The similarity of multiple instances based on the same image is plotted in Figure \ref{fig:multiple_restarts}.  As can be seen from the figure, the amount of redundancy across different VMs when including the zero pages is nearly equal to $100$\%. However, the inclusion of zero pages biases the redundancy calculation since, as discussed earlier, special mechanisms like zero page compression can be used to optimize the live migration. The normalized value for non-zero duplicate memory gives the real value for optimistic upper bound on the amount of redundancy that can be achieved in the best possible case. It is clearly evident from the figure that $40$\% redundancy is the best case value for system using a common disk image to spawn multiple VMs (in this one sample set). Though there is a steep decrease in the amount of redundacy after the first few VM images, the value for the upper bound appears to start saturating (this calculation is quite time intensive and it can be repeated for an arbitrarily large set in the future to see when saturation would occur).
 
 
 \subsection{Comparison of different variants of Linux on bootup}
-This section describes the second set of experiments performed to obtain base case values for the amount of redundancy that can be exploited for group migration. In this method, we compared the redundancy that exists across different variants of Linux operating system on bootup. We used CentOS 6.4, Fedora 14, Scientific Linux 6.3 and Ubuntu 12.04 for our study.
+This section describes the second set of experiments performed to obtain base case values for the amount of redundancy that can be exploited for group migration. In this method, we compared the redundancy that exists across different variants of Linux operating system at boot. We tested CentOS 6.4, Fedora 14, Scientific Linux 6.3 and Ubuntu 12.04.
 
 \begin{figure}
   \centering
